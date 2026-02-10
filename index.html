@@ -5,29 +5,28 @@
   <title>Tâches</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
   <style>
     :root {
-      --bg: #f2f2f7;
+      --bg: #f2f7f4;
       --card: #ffffff;
-      --primary: #007aff;
-      --danger: #ff3b30;
-      --warning: #ffcc00;
-      --success: #34c759;
+      --g1: #2ecc71;
+      --g2: #27ae60;
+      --g3: #1e8449;
+      --danger: #e74c3c;
       --text: #1c1c1e;
       --radius: 16px;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
+      background: linear-gradient(180deg, var(--g1), var(--bg));
       margin: 0;
       padding: 16px;
       color: var(--text);
     }
 
-    h1 { text-align: center; margin-bottom: 12px; }
+    h1 { text-align: center; margin-bottom: 12px; color: #fff; }
 
     .container { max-width: 680px; margin: auto; }
 
@@ -35,7 +34,7 @@
       background: var(--card);
       padding: 16px;
       border-radius: var(--radius);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.12);
       margin-bottom: 16px;
     }
 
@@ -50,17 +49,12 @@
 
     button { border: none; font-weight: 600; }
 
-    .add { background: var(--primary); color: #fff; }
-    .edit { background: var(--warning); }
+    .add { background: linear-gradient(90deg, var(--g2), var(--g3)); color: #fff; }
+    .edit { background: #ecf9f1; }
     .delete { background: var(--danger); color: #fff; margin-top: 6px; }
 
-    .filters {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .filters button { background: #e5e5ea; }
+    .filters { display: flex; gap: 8px; margin-bottom: 16px; }
+    .filters button { background: #eafaf1; }
 
     .badge {
       display: inline-block;
@@ -69,11 +63,12 @@
       font-size: 13px;
       font-weight: 600;
       margin-bottom: 6px;
+      color: #fff;
     }
 
-    .todo { background: #e5e5ea; }
-    .doing { background: var(--warning); }
-    .done { background: var(--success); color: #fff; }
+    .todo { background: linear-gradient(90deg, #6ab04c, #badc58); }
+    .doing { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+    .done { background: linear-gradient(90deg, #145a32, #1e8449); }
 
     .images {
       display: flex;
@@ -82,16 +77,15 @@
       margin-top: 10px;
     }
 
-    .images img {
-      height: 100px;
-      border-radius: 12px;
-    }
+    .images img { height: 100px; border-radius: 12px; }
+
+    .date { font-size: 13px; opacity: 0.8; margin-top: 4px; }
   </style>
 </head>
 <body>
 <div class="container">
 
-  <h1>📱 Tâches</h1>
+  <h1>🌿 Mes tâches</h1>
 
   <div class="filters">
     <button onclick="setFilter('all')">Toutes</button>
@@ -104,6 +98,7 @@
     <input type="hidden" id="editId" />
     <input type="text" id="title" placeholder="Titre" required />
     <textarea id="description" placeholder="Description"></textarea>
+    <input type="date" id="dueDate" />
     <select id="status">
       <option value="todo">À faire</option>
       <option value="doing">En cours</option>
@@ -124,8 +119,8 @@ function save() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-function label(status) {
-  return status === 'todo' ? 'À faire' : status === 'doing' ? 'En cours' : 'Terminée';
+function label(s) {
+  return s === 'todo' ? 'À faire' : s === 'doing' ? 'En cours' : 'Terminée';
 }
 
 function render() {
@@ -133,32 +128,31 @@ function render() {
   list.innerHTML = '';
 
   tasks.filter(t => filter === 'all' || t.status === filter)
-    .forEach(task => {
+    .forEach(t => {
       const div = document.createElement('div');
       div.className = 'task';
 
+      const late = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done';
+
       div.innerHTML = `
-        <h3>${task.title}</h3>
-        <span class="badge ${task.status}">${label(task.status)}</span>
-        <p>${task.description || ''}</p>
-        <div class="images">${task.images.map(i => `<img src="${i}">`).join('')}</div>
-        <button class="edit" onclick="editTask('${task.id}')">Modifier</button>
-        <button class="delete" onclick="deleteTask('${task.id}')">Supprimer</button>
+        <h3>${t.title}</h3>
+        <span class="badge ${t.status}">${label(t.status)}</span>
+        <p>${t.description || ''}</p>
+        ${t.dueDate ? `<div class="date" style="color:${late ? 'red' : '#555'}">📅 ${t.dueDate}</div>` : ''}
+        <div class="images">${t.images.map(i => `<img src="${i}">`).join('')}</div>
+        <button class="edit" onclick="editTask('${t.id}')">Modifier</button>
+        <button class="delete" onclick="deleteTask('${t.id}')">Supprimer</button>
       `;
 
       list.appendChild(div);
     });
 }
 
-function setFilter(f) {
-  filter = f;
-  render();
-}
+function setFilter(f) { filter = f; render(); }
 
 function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
-  save();
-  render();
+  save(); render();
 }
 
 function editTask(id) {
@@ -167,7 +161,8 @@ function editTask(id) {
   title.value = t.title;
   description.value = t.description;
   status.value = t.status;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  dueDate.value = t.dueDate || '';
+  scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 const form = document.getElementById('taskForm');
@@ -175,6 +170,7 @@ const editId = document.getElementById('editId');
 const title = document.getElementById('title');
 const description = document.getElementById('description');
 const status = document.getElementById('status');
+const dueDate = document.getElementById('dueDate');
 const imagesInput = document.getElementById('images');
 
 form.addEventListener('submit', e => {
@@ -189,6 +185,7 @@ form.addEventListener('submit', e => {
       t.title = title.value;
       t.description = description.value;
       t.status = status.value;
+      t.dueDate = dueDate.value;
       t.images.push(...imgs);
     } else {
       tasks.push({
@@ -196,14 +193,11 @@ form.addEventListener('submit', e => {
         title: title.value,
         description: description.value,
         status: status.value,
+        dueDate: dueDate.value,
         images: imgs
       });
     }
-
-    save();
-    render();
-    form.reset();
-    editId.value = '';
+    save(); render(); form.reset(); editId.value = '';
   };
 
   if (!files.length) return done();
@@ -219,8 +213,8 @@ form.addEventListener('submit', e => {
   });
 });
 
-// Mode sombre automatique
-if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+// Dark mode
+if (matchMedia('(prefers-color-scheme: dark)').matches) {
   document.documentElement.style.setProperty('--bg', '#000');
   document.documentElement.style.setProperty('--card', '#1c1c1e');
   document.documentElement.style.setProperty('--text', '#fff');
