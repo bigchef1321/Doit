@@ -2,110 +2,68 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<title>Mes tâches</title>
+<title>Tasks</title>
 
 <style>
-:root {
-  /* Palette vert vintage raffinée */
-  --green-sage:#7a8f7c;
-  --green-olive:#6f7f66;
-  --green-moss:#556b57;
-  --green-deep:#3f5142;
-
-  --bg:#f2f4f1;
-  --card:#ffffff;
-  --text:#1c1f1d;
-  --muted:#6e746f;
-  --danger:#b04a3a;
-  --radius:20px;
+:root{
+  --accent:#6e8b74; /* vert subtil premium */
+  --accent-soft:#dfe7e2;
+  --bg:#f5f5f7;
+  --card:rgba(255,255,255,0.75);
+  --text:#1d1d1f;
+  --muted:#86868b;
+  --danger:#d64545;
+  --radius:22px;
 }
 
 *{box-sizing:border-box}
 
 body{
   margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
   background:var(--bg);
   color:var(--text);
   -webkit-font-smoothing:antialiased;
 }
 
 header{
-  background:linear-gradient(140deg,var(--green-sage),var(--green-deep));
-  color:white;
-  padding:34px 20px 70px 20px;
-  border-bottom-left-radius:36px;
-  border-bottom-right-radius:36px;
-}
-
-header h1{
-  margin:0;
-  font-weight:500;
-  font-size:22px;
-  letter-spacing:0.3px;
+  padding:28px 22px 10px 22px;
+  font-size:28px;
+  font-weight:600;
 }
 
 .container{
-  max-width:680px;
-  margin:-50px auto 40px auto;
-  padding:0 18px;
+  max-width:720px;
+  margin:auto;
+  padding:0 18px 120px 18px;
 }
 
 .card{
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   background:var(--card);
   border-radius:var(--radius);
   padding:20px;
-  box-shadow:0 6px 20px rgba(0,0,0,0.05);
-  margin-bottom:16px;
-}
-
-button{
-  border:none;
-  border-radius:14px;
-  padding:12px 16px;
-  font-size:15px;
-  font-weight:500;
-  cursor:pointer;
-}
-
-.btn-primary{
-  background:linear-gradient(135deg,var(--green-olive),var(--green-deep));
-  color:white;
-}
-
-.btn-light{
-  background:#e8ece7;
-  color:var(--green-deep);
-}
-
-.btn-danger{
-  background:var(--danger);
-  color:white;
-}
-
-.filters{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:20px;
+  margin-bottom:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.05);
 }
 
 .task-title{
-  font-size:17px;
+  font-size:18px;
   font-weight:600;
   margin-bottom:6px;
 }
 
 .badge{
   display:inline-block;
-  padding:5px 12px;
   font-size:12px;
+  padding:6px 12px;
   border-radius:999px;
-  background:linear-gradient(135deg,var(--green-sage),var(--green-moss));
-  color:white;
-  margin-bottom:8px;
+  background:var(--accent-soft);
+  color:var(--accent);
+  margin-bottom:10px;
 }
 
 .date{
@@ -122,8 +80,39 @@ button{
 }
 
 .images img{
-  height:85px;
+  height:90px;
+  border-radius:16px;
+}
+
+button{
+  border:none;
   border-radius:14px;
+  padding:12px 16px;
+  font-size:15px;
+  font-weight:500;
+  cursor:pointer;
+}
+
+.btn-primary{
+  background:var(--accent);
+  color:white;
+}
+
+.btn-light{
+  background:#ededf0;
+  color:#333;
+}
+
+.btn-danger{
+  background:var(--danger);
+  color:white;
+}
+
+.filters{
+  display:flex;
+  gap:8px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
 }
 
 input,textarea,select{
@@ -131,8 +120,8 @@ input,textarea,select{
   padding:14px;
   margin-top:12px;
   border-radius:16px;
-  border:1px solid #dcdcdc;
-  font-size:16px; /* évite zoom iOS */
+  border:1px solid #d2d2d7;
+  font-size:16px;
   background:white;
 }
 
@@ -142,68 +131,66 @@ textarea{resize:vertical}
 
 .fab{
   position:fixed;
-  bottom:26px;
-  right:22px;
-  width:58px;
-  height:58px;
+  bottom:32px;
+  right:24px;
+  width:60px;
+  height:60px;
   border-radius:50%;
-  background:linear-gradient(135deg,var(--green-olive),var(--green-deep));
+  background:var(--accent);
   color:white;
   font-size:30px;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow:0 10px 25px rgba(0,0,0,0.18);
+  box-shadow:0 15px 35px rgba(0,0,0,0.15);
 }
 
 @media (prefers-color-scheme: dark){
-  body{background:#161816;color:#f1f1f1}
-  .card{background:#1f2320}
-  input,textarea,select{background:#2a2e2a;color:white;border:1px solid #3a3f3a}
+  :root{
+    --bg:#000000;
+    --card:rgba(28,28,30,0.75);
+    --text:#f5f5f7;
+    --muted:#98989d;
+    --accent-soft:#2c2c2e;
+  }
+  input,textarea,select{background:#1c1c1e;color:white;border:1px solid #3a3a3c}
 }
 
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🌿 Mes tâches</h1>
-</header>
+<header>Tasks</header>
 
 <div class="container">
 
-  <!-- PAGE LISTE -->
-  <div id="pageList">
-
-    <div class="filters">
-      <button class="btn-light" onclick="setFilter('all')">Toutes</button>
-      <button class="btn-light" onclick="setFilter('todo')">À faire</button>
-      <button class="btn-light" onclick="setFilter('doing')">En cours</button>
-      <button class="btn-light" onclick="setFilter('done')">Terminées</button>
-    </div>
-
-    <div id="taskList"></div>
-
+<div id="pageList">
+  <div class="filters">
+    <button class="btn-light" onclick="setFilter('all')">Toutes</button>
+    <button class="btn-light" onclick="setFilter('todo')">À faire</button>
+    <button class="btn-light" onclick="setFilter('doing')">En cours</button>
+    <button class="btn-light" onclick="setFilter('done')">Terminées</button>
   </div>
+  <div id="taskList"></div>
+</div>
 
-  <!-- PAGE CREATION -->
-  <div id="pageForm" class="hidden">
-    <div class="card">
-      <h3 id="formTitle">Nouvelle tâche</h3>
-      <input type="hidden" id="editId">
-      <input type="text" id="title" placeholder="Titre" required>
-      <textarea id="description" placeholder="Description"></textarea>
-      <input type="date" id="dueDate">
-      <select id="status">
-        <option value="todo">À faire</option>
-        <option value="doing">En cours</option>
-        <option value="done">Terminée</option>
-      </select>
-      <input type="file" id="images" accept="image/*" capture="environment" multiple>
-      <button class="btn-primary" onclick="saveTask()">Valider</button>
-      <button class="btn-light" onclick="showList()" style="margin-top:10px">Annuler</button>
-    </div>
+<div id="pageForm" class="hidden">
+  <div class="card">
+    <h3 id="formTitle">Nouvelle tâche</h3>
+    <input type="hidden" id="editId">
+    <input type="text" id="title" placeholder="Titre">
+    <textarea id="description" placeholder="Description"></textarea>
+    <input type="date" id="dueDate">
+    <select id="status">
+      <option value="todo">À faire</option>
+      <option value="doing">En cours</option>
+      <option value="done">Terminée</option>
+    </select>
+    <input type="file" id="images" accept="image/*" capture="environment" multiple>
+    <button class="btn-primary" onclick="saveTask()">Valider</button>
+    <button class="btn-light" onclick="showList()" style="margin-top:10px">Annuler</button>
   </div>
+</div>
 
 </div>
 
@@ -220,18 +207,16 @@ function render(){
   const list=document.getElementById('taskList');
   list.innerHTML='';
 
-  tasks
-  .filter(t=>filter==='all'||t.status===filter)
+  tasks.filter(t=>filter==='all'||t.status===filter)
   .forEach(t=>{
     const div=document.createElement('div');
     div.className='card';
-
     const late=t.dueDate && new Date(t.dueDate)<new Date() && t.status!=='done';
 
     div.innerHTML=`
       <div class="task-title">${t.title}</div>
       <div class="badge">${label(t.status)}</div>
-      ${t.dueDate?`<div class="date" style="color:${late?'var(--danger)':'var(--muted)'}">📅 ${t.dueDate}</div>`:''}
+      ${t.dueDate?`<div class="date" style="color:${late?'var(--danger)':'var(--muted)'}">${t.dueDate}</div>`:''}
       <div>${t.description||''}</div>
       <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
       <div style="margin-top:14px;display:flex;gap:10px">
@@ -300,14 +285,7 @@ function saveTask(){
       t.status=status;
       t.images=[...(t.images||[]),...newImgs];
     }else{
-      tasks.push({
-        id:crypto.randomUUID(),
-        title,
-        description,
-        dueDate,
-        status,
-        images:newImgs
-      });
+      tasks.push({id:crypto.randomUUID(),title,description,dueDate,status,images:newImgs});
     }
 
     saveStorage();
