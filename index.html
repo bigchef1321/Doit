@@ -8,68 +8,89 @@
 
 <style>
 :root{
-  --accent:#6e8b74; /* vert subtil premium */
-  --accent-soft:#dfe7e2;
-  --bg:#f5f5f7;
-  --card:rgba(255,255,255,0.75);
-  --text:#1d1d1f;
-  --muted:#86868b;
-  --danger:#d64545;
-  --radius:22px;
+  --bg:#f7f7f5;
+  --card:#ffffff;
+  --text:#111111;
+  --muted:#8a8a8a;
+  --accent:#4f5d50;      /* vert profond premium */
+  --accent-soft:#e9ece8;
+  --danger:#b94a48;
+  --radius:18px;
 }
 
 *{box-sizing:border-box}
 
 body{
   margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
   background:var(--bg);
   color:var(--text);
   -webkit-font-smoothing:antialiased;
 }
 
 header{
-  padding:28px 22px 10px 22px;
-  font-size:28px;
+  padding:32px 22px 10px 22px;
+  font-size:26px;
   font-weight:600;
+  letter-spacing:-0.3px;
 }
 
 .container{
-  max-width:720px;
+  max-width:680px;
   margin:auto;
-  padding:0 18px 120px 18px;
+  padding:0 20px 120px 20px;
+}
+
+/* FILTRES STYLE RHONE MINIMAL */
+.filters{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding-bottom:10px;
+  margin-bottom:25px;
+}
+
+.filters button{
+  white-space:nowrap;
+  border:none;
+  background:var(--accent-soft);
+  color:var(--accent);
+  padding:8px 16px;
+  border-radius:999px;
+  font-size:14px;
+  font-weight:500;
 }
 
 .card{
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   background:var(--card);
   border-radius:var(--radius);
   padding:20px;
-  margin-bottom:18px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.05);
+  margin-bottom:16px;
+  border:1px solid #efefef;
 }
 
 .task-title{
-  font-size:18px;
+  font-size:17px;
   font-weight:600;
   margin-bottom:6px;
 }
 
 .badge{
   display:inline-block;
-  font-size:12px;
-  padding:6px 12px;
+  font-size:11px;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  padding:4px 10px;
   border-radius:999px;
   background:var(--accent-soft);
   color:var(--accent);
-  margin-bottom:10px;
+  margin-bottom:8px;
 }
 
 .date{
   font-size:13px;
   color:var(--muted);
-  margin-bottom:8px;
+  margin-bottom:6px;
 }
 
 .images{
@@ -80,80 +101,94 @@ header{
 }
 
 .images img{
-  height:90px;
-  border-radius:16px;
+  height:85px;
+  border-radius:12px;
 }
 
-button{
-  border:none;
-  border-radius:14px;
-  padding:12px 16px;
-  font-size:15px;
-  font-weight:500;
-  cursor:pointer;
-}
-
-.btn-primary{
-  background:var(--accent);
-  color:white;
-}
-
-.btn-light{
-  background:#ededf0;
-  color:#333;
-}
-
-.btn-danger{
-  background:var(--danger);
-  color:white;
-}
-
-.filters{
+.actions{
+  margin-top:16px;
   display:flex;
-  gap:8px;
-  margin-bottom:20px;
-  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.link-btn{
+  background:none;
+  border:none;
+  font-size:14px;
+  color:var(--accent);
+  padding:0;
+}
+
+.delete-btn{
+  background:none;
+  border:none;
+  font-size:14px;
+  color:var(--muted);
+  padding:0;
+}
+
+.delete-btn:hover{
+  color:var(--danger);
 }
 
 input,textarea,select{
   width:100%;
   padding:14px;
-  margin-top:12px;
-  border-radius:16px;
-  border:1px solid #d2d2d7;
+  margin-top:14px;
+  border-radius:14px;
+  border:1px solid #e5e5e5;
   font-size:16px;
   background:white;
 }
 
 textarea{resize:vertical}
 
+.primary{
+  background:var(--accent);
+  color:white;
+  border:none;
+  padding:14px;
+  width:100%;
+  border-radius:14px;
+  font-size:15px;
+  margin-top:18px;
+}
+
+.secondary{
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-size:14px;
+  margin-top:14px;
+}
+
 .hidden{display:none}
 
 .fab{
   position:fixed;
-  bottom:32px;
+  bottom:34px;
   right:24px;
-  width:60px;
-  height:60px;
+  width:56px;
+  height:56px;
   border-radius:50%;
   background:var(--accent);
   color:white;
-  font-size:30px;
+  font-size:28px;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow:0 15px 35px rgba(0,0,0,0.15);
 }
 
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#000000;
-    --card:rgba(28,28,30,0.75);
-    --text:#f5f5f7;
-    --muted:#98989d;
-    --accent-soft:#2c2c2e;
+    --bg:#0f0f10;
+    --card:#1c1c1e;
+    --text:#f2f2f2;
+    --muted:#9a9a9e;
+    --accent-soft:#2a2a2c;
   }
-  input,textarea,select{background:#1c1c1e;color:white;border:1px solid #3a3a3c}
+  input,textarea,select{background:#2a2a2c;border:1px solid #3a3a3c;color:white}
 }
 
 </style>
@@ -166,10 +201,10 @@ textarea{resize:vertical}
 
 <div id="pageList">
   <div class="filters">
-    <button class="btn-light" onclick="setFilter('all')">Toutes</button>
-    <button class="btn-light" onclick="setFilter('todo')">À faire</button>
-    <button class="btn-light" onclick="setFilter('doing')">En cours</button>
-    <button class="btn-light" onclick="setFilter('done')">Terminées</button>
+    <button onclick="setFilter('all')">Toutes</button>
+    <button onclick="setFilter('todo')">À faire</button>
+    <button onclick="setFilter('doing')">En cours</button>
+    <button onclick="setFilter('done')">Terminées</button>
   </div>
   <div id="taskList"></div>
 </div>
@@ -187,8 +222,8 @@ textarea{resize:vertical}
       <option value="done">Terminée</option>
     </select>
     <input type="file" id="images" accept="image/*" capture="environment" multiple>
-    <button class="btn-primary" onclick="saveTask()">Valider</button>
-    <button class="btn-light" onclick="showList()" style="margin-top:10px">Annuler</button>
+    <button class="primary" onclick="saveTask()">Valider</button>
+    <button class="secondary" onclick="showList()">Annuler</button>
   </div>
 </div>
 
@@ -211,6 +246,7 @@ function render(){
   .forEach(t=>{
     const div=document.createElement('div');
     div.className='card';
+
     const late=t.dueDate && new Date(t.dueDate)<new Date() && t.status!=='done';
 
     div.innerHTML=`
@@ -219,9 +255,9 @@ function render(){
       ${t.dueDate?`<div class="date" style="color:${late?'var(--danger)':'var(--muted)'}">${t.dueDate}</div>`:''}
       <div>${t.description||''}</div>
       <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
-      <div style="margin-top:14px;display:flex;gap:10px">
-        <button class="btn-light" onclick="editTask('${t.id}')">Modifier</button>
-        <button class="btn-danger" onclick="deleteTask('${t.id}')">Supprimer</button>
+      <div class="actions">
+        <button class="link-btn" onclick="editTask('${t.id}')">Modifier</button>
+        <button class="delete-btn" onclick="deleteTask('${t.id}')">Supprimer</button>
       </div>
     `;
     list.appendChild(div);
