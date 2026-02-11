@@ -23,6 +23,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
   background:var(--bg);
   color:var(--text);
+  overflow-x:hidden;
 }
 
 header{
@@ -31,7 +32,18 @@ header{
   font-weight:700;
 }
 
-.container{padding:0 16px 120px 16px; max-width:700px; margin:auto}
+.container{padding:0 16px 120px 16px; max-width:700px; margin:auto; position:relative}
+
+.page{
+  position:absolute;
+  width:100%;
+  top:0;
+  left:0;
+  transition:transform 0.35s ease, opacity 0.25s ease;
+}
+
+.hidden{opacity:0; pointer-events:none; transform:translateX(30px)}
+.active{opacity:1; pointer-events:auto; transform:translateX(0)}
 
 .list-item{
   background:var(--card);
@@ -43,8 +55,6 @@ header{
   align-items:center;
   border:1px solid #e5e5ea;
 }
-
-.list-item:active{opacity:0.6}
 
 .title{font-size:17px; font-weight:500}
 .subtitle{font-size:13px; color:var(--muted); margin-top:4px}
@@ -91,6 +101,20 @@ input,textarea,select{
 
 textarea{resize:vertical}
 
+.file-buttons{
+  display:flex;
+  gap:10px;
+  margin-top:14px;
+}
+
+.file-buttons button{
+  flex:1;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #e5e5ea;
+  background:#fafafa;
+}
+
 .primary{
   background:var(--accent);
   color:white;
@@ -105,9 +129,9 @@ textarea{resize:vertical}
 .secondary{
   background:none;
   border:none;
-  color:var(--muted);
+  color:var(--danger);
   font-size:15px;
-  margin-top:10px;
+  margin-top:14px;
 }
 
 .images{
@@ -116,19 +140,9 @@ textarea{resize:vertical}
   overflow-x:auto;
   margin-top:15px;
 }
-.images img{
-  height:120px;
-  border-radius:12px;
-}
+.images img{height:120px; border-radius:12px}
 
-.hidden{display:none}
-
-.back{
-  color:var(--accent);
-  font-size:16px;
-  margin-bottom:15px;
-  display:inline-block;
-}
+.back{color:var(--accent); font-size:16px; margin-bottom:15px; display:inline-block}
 
 </style>
 </head>
@@ -138,14 +152,9 @@ textarea{resize:vertical}
 
 <div class="container">
 
-<!-- LIST PAGE -->
-<div id="pageList"></div>
-
-<!-- DETAIL PAGE -->
-<div id="pageDetail" class="hidden"></div>
-
-<!-- FORM PAGE -->
-<div id="pageForm" class="hidden"></div>
+<div id="pageList" class="page active"></div>
+<div id="pageDetail" class="page hidden"></div>
+<div id="pageForm" class="page hidden"></div>
 
 </div>
 
@@ -156,11 +165,14 @@ let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
 
 function saveStorage(){localStorage.setItem('tasks',JSON.stringify(tasks));}
 
-function showPage(id){
-  document.getElementById('pageList').classList.add('hidden');
-  document.getElementById('pageDetail').classList.add('hidden');
-  document.getElementById('pageForm').classList.add('hidden');
-  document.getElementById(id).classList.remove('hidden');
+function switchPage(showId){
+  document.querySelectorAll('.page').forEach(p=>{
+    p.classList.remove('active');
+    p.classList.add('hidden');
+  });
+  const page=document.getElementById(showId);
+  page.classList.remove('hidden');
+  setTimeout(()=>page.classList.add('active'),10);
 }
 
 function renderList(){
@@ -191,11 +203,11 @@ function openDetail(id){
   const page=document.getElementById('pageDetail');
 
   page.innerHTML=`
-    <div class="back" onclick="backToList()">← Retour</div>
+    <div class="back" onclick="switchPage('pageList')">← Retour</div>
     <div class="card">
       <h2>${t.title}</h2>
       <div class="badge">${label(t.status)}</div>
-      <p style="margin-top:10px">${t.description||''}</p>
+      <p>${t.description||''}</p>
       ${t.dueDate?`<div class="subtitle">Échéance : ${t.dueDate}</div>`:''}
       <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
       <button class="primary" onclick="openForm('${t.id}')">Modifier</button>
@@ -203,7 +215,7 @@ function openDetail(id){
     </div>
   `;
 
-  showPage('pageDetail');
+  switchPage('pageDetail');
 }
 
 function openForm(id=null){
@@ -212,7 +224,7 @@ function openForm(id=null){
   if(id){t=tasks.find(x=>x.id===id)}
 
   page.innerHTML=`
-    <div class="back" onclick="backToList()">← Retour</div>
+    <div class="back" onclick="switchPage('pageList')">← Retour</div>
     <div class="card">
       <input type="hidden" id="editId" value="${id||''}">
       <input type="text" id="title" placeholder="Titre" value="${t.title||''}">
@@ -223,12 +235,20 @@ function openForm(id=null){
         <option value="doing" ${t.status==='doing'?'selected':''}>En cours</option>
         <option value="done" ${t.status==='done'?'selected':''}>Terminée</option>
       </select>
-      <input type="file" id="images" accept="image/*" capture="environment" multiple>
+
+      <div class="file-buttons">
+        <button onclick="document.getElementById('fileInput').click()">Ajouter fichiers</button>
+        <button onclick="document.getElementById('cameraInput').click()">Prendre photo</button>
+      </div>
+
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple hidden>
+
       <button class="primary" onclick="saveTask()">Valider</button>
     </div>
   `;
 
-  showPage('pageForm');
+  switchPage('pageForm');
 }
 
 function saveTask(){
@@ -239,12 +259,16 @@ function saveTask(){
   const description=document.getElementById('description').value;
   const dueDate=document.getElementById('dueDate').value;
   const status=document.getElementById('status').value;
-  const files=document.getElementById('images').files;
+
+  const files=[
+    ...document.getElementById('fileInput').files,
+    ...document.getElementById('cameraInput').files
+  ];
 
   const processImages=(callback)=>{
     if(!files.length)return callback([]);
     let imgs=[]; let loaded=0;
-    [...files].forEach(f=>{
+    files.forEach(f=>{
       const r=new FileReader();
       r.onload=e=>{imgs.push(e.target.result);loaded++;if(loaded===files.length)callback(imgs)};
       r.readAsDataURL(f);
@@ -265,7 +289,7 @@ function saveTask(){
 
     saveStorage();
     renderList();
-    showPage('pageList');
+    switchPage('pageList');
   });
 }
 
@@ -273,12 +297,7 @@ function deleteTask(id){
   tasks=tasks.filter(t=>t.id!==id);
   saveStorage();
   renderList();
-  showPage('pageList');
-}
-
-function backToList(){
-  renderList();
-  showPage('pageList');
+  switchPage('pageList');
 }
 
 renderList();
