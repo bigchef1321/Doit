@@ -2,56 +2,62 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <title>Mes tâches</title>
 
 <style>
 :root {
-  --green-1:#5f7f6f;
-  --green-2:#4f6f60;
-  --green-3:#3e5c4f;
-  --green-4:#2f463c;
-  --bg:#f4f6f3;
+  /* Palette vert vintage raffinée */
+  --green-sage:#7a8f7c;
+  --green-olive:#6f7f66;
+  --green-moss:#556b57;
+  --green-deep:#3f5142;
+
+  --bg:#f2f4f1;
   --card:#ffffff;
-  --text:#1e1e1e;
-  --muted:#6b6b6b;
-  --radius:18px;
+  --text:#1c1f1d;
+  --muted:#6e746f;
+  --danger:#b04a3a;
+  --radius:20px;
 }
+
+*{box-sizing:border-box}
 
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   background:var(--bg);
   color:var(--text);
+  -webkit-font-smoothing:antialiased;
 }
 
 header{
-  background:linear-gradient(135deg,var(--green-2),var(--green-4));
+  background:linear-gradient(140deg,var(--green-sage),var(--green-deep));
   color:white;
-  padding:28px 20px 60px 20px;
-  border-bottom-left-radius:30px;
-  border-bottom-right-radius:30px;
+  padding:34px 20px 70px 20px;
+  border-bottom-left-radius:36px;
+  border-bottom-right-radius:36px;
 }
 
 header h1{
   margin:0;
-  font-weight:600;
+  font-weight:500;
   font-size:22px;
-  letter-spacing:0.5px;
+  letter-spacing:0.3px;
 }
 
 .container{
-  max-width:720px;
-  margin:-40px auto 40px auto;
-  padding:0 16px;
+  max-width:680px;
+  margin:-50px auto 40px auto;
+  padding:0 18px;
 }
 
 .card{
   background:var(--card);
   border-radius:var(--radius);
-  padding:18px;
-  box-shadow:0 8px 25px rgba(0,0,0,0.06);
+  padding:20px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.05);
   margin-bottom:16px;
 }
 
@@ -65,17 +71,17 @@ button{
 }
 
 .btn-primary{
-  background:linear-gradient(135deg,var(--green-1),var(--green-3));
+  background:linear-gradient(135deg,var(--green-olive),var(--green-deep));
   color:white;
 }
 
 .btn-light{
-  background:#e9efe9;
-  color:var(--green-4);
+  background:#e8ece7;
+  color:var(--green-deep);
 }
 
 .btn-danger{
-  background:#c0392b;
+  background:var(--danger);
   color:white;
 }
 
@@ -83,7 +89,7 @@ button{
   display:flex;
   gap:8px;
   flex-wrap:wrap;
-  margin-bottom:18px;
+  margin-bottom:20px;
 }
 
 .task-title{
@@ -94,10 +100,10 @@ button{
 
 .badge{
   display:inline-block;
-  padding:4px 10px;
+  padding:5px 12px;
   font-size:12px;
   border-radius:999px;
-  background:linear-gradient(135deg,var(--green-1),var(--green-3));
+  background:linear-gradient(135deg,var(--green-sage),var(--green-moss));
   color:white;
   margin-bottom:8px;
 }
@@ -110,24 +116,24 @@ button{
 
 .images{
   display:flex;
-  gap:8px;
+  gap:10px;
   overflow-x:auto;
-  margin-top:8px;
+  margin-top:10px;
 }
 
 .images img{
-  height:90px;
-  border-radius:12px;
+  height:85px;
+  border-radius:14px;
 }
 
 input,textarea,select{
   width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:14px;
+  padding:14px;
+  margin-top:12px;
+  border-radius:16px;
   border:1px solid #dcdcdc;
-  font-size:15px;
-  box-sizing:border-box;
+  font-size:16px; /* évite zoom iOS */
+  background:white;
 }
 
 textarea{resize:vertical}
@@ -136,23 +142,24 @@ textarea{resize:vertical}
 
 .fab{
   position:fixed;
-  bottom:24px;
-  right:24px;
-  width:56px;
-  height:56px;
+  bottom:26px;
+  right:22px;
+  width:58px;
+  height:58px;
   border-radius:50%;
-  background:linear-gradient(135deg,var(--green-1),var(--green-3));
+  background:linear-gradient(135deg,var(--green-olive),var(--green-deep));
   color:white;
-  font-size:28px;
+  font-size:30px;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow:0 10px 25px rgba(0,0,0,0.2);
+  box-shadow:0 10px 25px rgba(0,0,0,0.18);
 }
 
 @media (prefers-color-scheme: dark){
-  body{background:#121412;color:#f2f2f2}
-  .card{background:#1c1f1d}
+  body{background:#161816;color:#f1f1f1}
+  .card{background:#1f2320}
+  input,textarea,select{background:#2a2e2a;color:white;border:1px solid #3a3f3a}
 }
 
 </style>
@@ -182,7 +189,7 @@ textarea{resize:vertical}
   <!-- PAGE CREATION -->
   <div id="pageForm" class="hidden">
     <div class="card">
-      <h3>Nouvelle tâche</h3>
+      <h3 id="formTitle">Nouvelle tâche</h3>
       <input type="hidden" id="editId">
       <input type="text" id="title" placeholder="Titre" required>
       <textarea id="description" placeholder="Description"></textarea>
@@ -193,8 +200,8 @@ textarea{resize:vertical}
         <option value="done">Terminée</option>
       </select>
       <input type="file" id="images" accept="image/*" capture="environment" multiple>
-      <button class="btn-primary" onclick="saveTask()">Enregistrer</button>
-      <button class="btn-light" onclick="showList()" style="margin-top:8px">Annuler</button>
+      <button class="btn-primary" onclick="saveTask()">Valider</button>
+      <button class="btn-light" onclick="showList()" style="margin-top:10px">Annuler</button>
     </div>
   </div>
 
@@ -207,23 +214,27 @@ let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
 let filter='all';
 
 function saveStorage(){localStorage.setItem('tasks',JSON.stringify(tasks));}
-
 function setFilter(f){filter=f;render();}
 
 function render(){
   const list=document.getElementById('taskList');
   list.innerHTML='';
-  tasks.filter(t=>filter==='all'||t.status===filter).forEach(t=>{
+
+  tasks
+  .filter(t=>filter==='all'||t.status===filter)
+  .forEach(t=>{
     const div=document.createElement('div');
     div.className='card';
-    const late=t.dueDate&&new Date(t.dueDate)<new Date()&&t.status!=='done';
+
+    const late=t.dueDate && new Date(t.dueDate)<new Date() && t.status!=='done';
+
     div.innerHTML=`
       <div class="task-title">${t.title}</div>
       <div class="badge">${label(t.status)}</div>
-      ${t.dueDate?`<div class="date" style="color:${late?'#c0392b':'var(--muted)'}">📅 ${t.dueDate}</div>`:''}
+      ${t.dueDate?`<div class="date" style="color:${late?'var(--danger)':'var(--muted)'}">📅 ${t.dueDate}</div>`:''}
       <div>${t.description||''}</div>
-      <div class="images">${t.images.map(i=>`<img src="${i}">`).join('')}</div>
-      <div style="margin-top:12px;display:flex;gap:8px">
+      <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
+      <div style="margin-top:14px;display:flex;gap:10px">
         <button class="btn-light" onclick="editTask('${t.id}')">Modifier</button>
         <button class="btn-danger" onclick="deleteTask('${t.id}')">Supprimer</button>
       </div>
@@ -235,6 +246,7 @@ function render(){
 function label(s){return s==='todo'?'À faire':s==='doing'?'En cours':'Terminée';}
 
 function showForm(){
+  document.getElementById('formTitle').innerText='Nouvelle tâche';
   document.getElementById('pageList').classList.add('hidden');
   document.getElementById('pageForm').classList.remove('hidden');
 }
@@ -242,58 +254,87 @@ function showForm(){
 function showList(){
   document.getElementById('pageForm').classList.add('hidden');
   document.getElementById('pageList').classList.remove('hidden');
+  resetForm();
+}
+
+function resetForm(){
   document.getElementById('editId').value='';
   document.getElementById('title').value='';
   document.getElementById('description').value='';
   document.getElementById('dueDate').value='';
   document.getElementById('status').value='todo';
+  document.getElementById('images').value='';
 }
 
 function saveTask(){
   const id=document.getElementById('editId').value;
-  const title=document.getElementById('title').value;
+  const title=document.getElementById('title').value.trim();
   if(!title)return;
+
   const description=document.getElementById('description').value;
   const dueDate=document.getElementById('dueDate').value;
   const status=document.getElementById('status').value;
   const files=document.getElementById('images').files;
-  const imgs=[];
 
-  const finalize=()=>{
+  const processImages=(callback)=>{
+    if(!files.length)return callback([]);
+    let imgs=[];
+    let loaded=0;
+    [...files].forEach(f=>{
+      const r=new FileReader();
+      r.onload=e=>{
+        imgs.push(e.target.result);
+        loaded++;
+        if(loaded===files.length)callback(imgs);
+      };
+      r.readAsDataURL(f);
+    });
+  };
+
+  processImages((newImgs)=>{
     if(id){
       const t=tasks.find(t=>t.id===id);
-      t.title=title;t.description=description;t.dueDate=dueDate;t.status=status;t.images.push(...imgs);
+      t.title=title;
+      t.description=description;
+      t.dueDate=dueDate;
+      t.status=status;
+      t.images=[...(t.images||[]),...newImgs];
     }else{
-      tasks.push({id:crypto.randomUUID(),title,description,dueDate,status,images:imgs});
+      tasks.push({
+        id:crypto.randomUUID(),
+        title,
+        description,
+        dueDate,
+        status,
+        images:newImgs
+      });
     }
+
     saveStorage();
     showList();
     render();
-  }
-
-  if(!files.length)return finalize();
-
-  let loaded=0;
-  [...files].forEach(f=>{
-    const r=new FileReader();
-    r.onload=e=>{imgs.push(e.target.result);if(++loaded===files.length)finalize();};
-    r.readAsDataURL(f);
   });
 }
 
 function editTask(id){
   const t=tasks.find(t=>t.id===id);
-  showForm();
+  if(!t)return;
+
+  document.getElementById('formTitle').innerText='Modifier la tâche';
   document.getElementById('editId').value=id;
   document.getElementById('title').value=t.title;
-  document.getElementById('description').value=t.description;
+  document.getElementById('description').value=t.description||'';
   document.getElementById('dueDate').value=t.dueDate||'';
   document.getElementById('status').value=t.status;
+
+  document.getElementById('pageList').classList.add('hidden');
+  document.getElementById('pageForm').classList.remove('hidden');
 }
 
 function deleteTask(id){
   tasks=tasks.filter(t=>t.id!==id);
-  saveStorage();render();
+  saveStorage();
+  render();
 }
 
 render();
