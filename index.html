@@ -8,167 +8,59 @@
 
 <style>
 :root{
-  --bg:#f7f7f5;
+  --bg:#f2f2f7;
   --card:#ffffff;
   --text:#111111;
-  --muted:#8a8a8a;
-  --accent:#4f5d50;      /* vert profond premium */
-  --accent-soft:#e9ece8;
-  --danger:#b94a48;
-  --radius:18px;
+  --muted:#8e8e93;
+  --accent:#4f5d50;
+  --danger:#ff3b30;
+  --radius:14px;
 }
 
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
   background:var(--bg);
   color:var(--text);
-  -webkit-font-smoothing:antialiased;
 }
 
 header{
-  padding:32px 22px 10px 22px;
-  font-size:26px;
-  font-weight:600;
-  letter-spacing:-0.3px;
-}
-
-.container{
-  max-width:680px;
-  margin:auto;
-  padding:0 20px 120px 20px;
-}
-
-/* FILTRES STYLE RHONE MINIMAL */
-.filters{
-  display:flex;
-  gap:10px;
-  overflow-x:auto;
-  padding-bottom:10px;
-  margin-bottom:25px;
-}
-
-.filters button{
-  white-space:nowrap;
-  border:none;
-  background:var(--accent-soft);
-  color:var(--accent);
-  padding:8px 16px;
-  border-radius:999px;
-  font-size:14px;
-  font-weight:500;
-}
-
-.card{
-  background:var(--card);
-  border-radius:var(--radius);
   padding:20px;
-  margin-bottom:16px;
-  border:1px solid #efefef;
+  font-size:28px;
+  font-weight:700;
 }
 
-.task-title{
-  font-size:17px;
-  font-weight:600;
-  margin-bottom:6px;
-}
+.container{padding:0 16px 120px 16px; max-width:700px; margin:auto}
 
-.badge{
-  display:inline-block;
-  font-size:11px;
-  letter-spacing:0.5px;
-  text-transform:uppercase;
-  padding:4px 10px;
-  border-radius:999px;
-  background:var(--accent-soft);
-  color:var(--accent);
-  margin-bottom:8px;
-}
-
-.date{
-  font-size:13px;
-  color:var(--muted);
-  margin-bottom:6px;
-}
-
-.images{
-  display:flex;
-  gap:10px;
-  overflow-x:auto;
-  margin-top:10px;
-}
-
-.images img{
-  height:85px;
-  border-radius:12px;
-}
-
-.actions{
-  margin-top:16px;
+.list-item{
+  background:var(--card);
+  padding:16px;
+  border-radius:var(--radius);
+  margin-bottom:10px;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  border:1px solid #e5e5ea;
 }
 
-.link-btn{
-  background:none;
-  border:none;
-  font-size:14px;
+.list-item:active{opacity:0.6}
+
+.title{font-size:17px; font-weight:500}
+.subtitle{font-size:13px; color:var(--muted); margin-top:4px}
+
+.badge{
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#e9ece8;
   color:var(--accent);
-  padding:0;
 }
-
-.delete-btn{
-  background:none;
-  border:none;
-  font-size:14px;
-  color:var(--muted);
-  padding:0;
-}
-
-.delete-btn:hover{
-  color:var(--danger);
-}
-
-input,textarea,select{
-  width:100%;
-  padding:14px;
-  margin-top:14px;
-  border-radius:14px;
-  border:1px solid #e5e5e5;
-  font-size:16px;
-  background:white;
-}
-
-textarea{resize:vertical}
-
-.primary{
-  background:var(--accent);
-  color:white;
-  border:none;
-  padding:14px;
-  width:100%;
-  border-radius:14px;
-  font-size:15px;
-  margin-top:18px;
-}
-
-.secondary{
-  background:none;
-  border:none;
-  color:var(--muted);
-  font-size:14px;
-  margin-top:14px;
-}
-
-.hidden{display:none}
 
 .fab{
   position:fixed;
-  bottom:34px;
-  right:24px;
+  bottom:30px;
+  right:20px;
   width:56px;
   height:56px;
   border-radius:50%;
@@ -180,15 +72,62 @@ textarea{resize:vertical}
   justify-content:center;
 }
 
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#0f0f10;
-    --card:#1c1c1e;
-    --text:#f2f2f2;
-    --muted:#9a9a9e;
-    --accent-soft:#2a2a2c;
-  }
-  input,textarea,select{background:#2a2a2c;border:1px solid #3a3a3c;color:white}
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:16px;
+  border:1px solid #e5e5ea;
+}
+
+input,textarea,select{
+  width:100%;
+  padding:14px;
+  margin-top:14px;
+  border-radius:12px;
+  border:1px solid #e5e5ea;
+  font-size:16px;
+}
+
+textarea{resize:vertical}
+
+.primary{
+  background:var(--accent);
+  color:white;
+  border:none;
+  padding:14px;
+  width:100%;
+  border-radius:12px;
+  font-size:16px;
+  margin-top:20px;
+}
+
+.secondary{
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-size:15px;
+  margin-top:10px;
+}
+
+.images{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  margin-top:15px;
+}
+.images img{
+  height:120px;
+  border-radius:12px;
+}
+
+.hidden{display:none}
+
+.back{
+  color:var(--accent);
+  font-size:16px;
+  margin-bottom:15px;
+  display:inline-block;
 }
 
 </style>
@@ -199,92 +138,97 @@ textarea{resize:vertical}
 
 <div class="container">
 
-<div id="pageList">
-  <div class="filters">
-    <button onclick="setFilter('all')">Toutes</button>
-    <button onclick="setFilter('todo')">À faire</button>
-    <button onclick="setFilter('doing')">En cours</button>
-    <button onclick="setFilter('done')">Terminées</button>
-  </div>
-  <div id="taskList"></div>
-</div>
+<!-- LIST PAGE -->
+<div id="pageList"></div>
 
-<div id="pageForm" class="hidden">
-  <div class="card">
-    <h3 id="formTitle">Nouvelle tâche</h3>
-    <input type="hidden" id="editId">
-    <input type="text" id="title" placeholder="Titre">
-    <textarea id="description" placeholder="Description"></textarea>
-    <input type="date" id="dueDate">
-    <select id="status">
-      <option value="todo">À faire</option>
-      <option value="doing">En cours</option>
-      <option value="done">Terminée</option>
-    </select>
-    <input type="file" id="images" accept="image/*" capture="environment" multiple>
-    <button class="primary" onclick="saveTask()">Valider</button>
-    <button class="secondary" onclick="showList()">Annuler</button>
-  </div>
-</div>
+<!-- DETAIL PAGE -->
+<div id="pageDetail" class="hidden"></div>
+
+<!-- FORM PAGE -->
+<div id="pageForm" class="hidden"></div>
 
 </div>
 
-<div class="fab" onclick="showForm()">+</div>
+<div class="fab" onclick="openForm()">+</div>
 
 <script>
 let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
-let filter='all';
 
 function saveStorage(){localStorage.setItem('tasks',JSON.stringify(tasks));}
-function setFilter(f){filter=f;render();}
 
-function render(){
-  const list=document.getElementById('taskList');
-  list.innerHTML='';
+function showPage(id){
+  document.getElementById('pageList').classList.add('hidden');
+  document.getElementById('pageDetail').classList.add('hidden');
+  document.getElementById('pageForm').classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+}
 
-  tasks.filter(t=>filter==='all'||t.status===filter)
-  .forEach(t=>{
+function renderList(){
+  const page=document.getElementById('pageList');
+  page.innerHTML='';
+
+  tasks.forEach(t=>{
     const div=document.createElement('div');
-    div.className='card';
-
-    const late=t.dueDate && new Date(t.dueDate)<new Date() && t.status!=='done';
+    div.className='list-item';
+    div.onclick=()=>openDetail(t.id);
 
     div.innerHTML=`
-      <div class="task-title">${t.title}</div>
-      <div class="badge">${label(t.status)}</div>
-      ${t.dueDate?`<div class="date" style="color:${late?'var(--danger)':'var(--muted)'}">${t.dueDate}</div>`:''}
-      <div>${t.description||''}</div>
-      <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
-      <div class="actions">
-        <button class="link-btn" onclick="editTask('${t.id}')">Modifier</button>
-        <button class="delete-btn" onclick="deleteTask('${t.id}')">Supprimer</button>
+      <div>
+        <div class="title">${t.title}</div>
+        <div class="subtitle">${t.dueDate||''}</div>
       </div>
+      <div class="badge">${label(t.status)}</div>
     `;
-    list.appendChild(div);
+
+    page.appendChild(div);
   });
 }
 
 function label(s){return s==='todo'?'À faire':s==='doing'?'En cours':'Terminée';}
 
-function showForm(){
-  document.getElementById('formTitle').innerText='Nouvelle tâche';
-  document.getElementById('pageList').classList.add('hidden');
-  document.getElementById('pageForm').classList.remove('hidden');
+function openDetail(id){
+  const t=tasks.find(t=>t.id===id);
+  const page=document.getElementById('pageDetail');
+
+  page.innerHTML=`
+    <div class="back" onclick="backToList()">← Retour</div>
+    <div class="card">
+      <h2>${t.title}</h2>
+      <div class="badge">${label(t.status)}</div>
+      <p style="margin-top:10px">${t.description||''}</p>
+      ${t.dueDate?`<div class="subtitle">Échéance : ${t.dueDate}</div>`:''}
+      <div class="images">${(t.images||[]).map(i=>`<img src="${i}">`).join('')}</div>
+      <button class="primary" onclick="openForm('${t.id}')">Modifier</button>
+      <button class="secondary" onclick="deleteTask('${t.id}')">Supprimer</button>
+    </div>
+  `;
+
+  showPage('pageDetail');
 }
 
-function showList(){
-  document.getElementById('pageForm').classList.add('hidden');
-  document.getElementById('pageList').classList.remove('hidden');
-  resetForm();
-}
+function openForm(id=null){
+  const page=document.getElementById('pageForm');
+  let t={title:'',description:'',dueDate:'',status:'todo',images:[]};
+  if(id){t=tasks.find(x=>x.id===id)}
 
-function resetForm(){
-  document.getElementById('editId').value='';
-  document.getElementById('title').value='';
-  document.getElementById('description').value='';
-  document.getElementById('dueDate').value='';
-  document.getElementById('status').value='todo';
-  document.getElementById('images').value='';
+  page.innerHTML=`
+    <div class="back" onclick="backToList()">← Retour</div>
+    <div class="card">
+      <input type="hidden" id="editId" value="${id||''}">
+      <input type="text" id="title" placeholder="Titre" value="${t.title||''}">
+      <textarea id="description" placeholder="Description">${t.description||''}</textarea>
+      <input type="date" id="dueDate" value="${t.dueDate||''}">
+      <select id="status">
+        <option value="todo" ${t.status==='todo'?'selected':''}>À faire</option>
+        <option value="doing" ${t.status==='doing'?'selected':''}>En cours</option>
+        <option value="done" ${t.status==='done'?'selected':''}>Terminée</option>
+      </select>
+      <input type="file" id="images" accept="image/*" capture="environment" multiple>
+      <button class="primary" onclick="saveTask()">Valider</button>
+    </div>
+  `;
+
+  showPage('pageForm');
 }
 
 function saveTask(){
@@ -299,15 +243,10 @@ function saveTask(){
 
   const processImages=(callback)=>{
     if(!files.length)return callback([]);
-    let imgs=[];
-    let loaded=0;
+    let imgs=[]; let loaded=0;
     [...files].forEach(f=>{
       const r=new FileReader();
-      r.onload=e=>{
-        imgs.push(e.target.result);
-        loaded++;
-        if(loaded===files.length)callback(imgs);
-      };
+      r.onload=e=>{imgs.push(e.target.result);loaded++;if(loaded===files.length)callback(imgs)};
       r.readAsDataURL(f);
     });
   };
@@ -325,33 +264,24 @@ function saveTask(){
     }
 
     saveStorage();
-    showList();
-    render();
+    renderList();
+    showPage('pageList');
   });
-}
-
-function editTask(id){
-  const t=tasks.find(t=>t.id===id);
-  if(!t)return;
-
-  document.getElementById('formTitle').innerText='Modifier la tâche';
-  document.getElementById('editId').value=id;
-  document.getElementById('title').value=t.title;
-  document.getElementById('description').value=t.description||'';
-  document.getElementById('dueDate').value=t.dueDate||'';
-  document.getElementById('status').value=t.status;
-
-  document.getElementById('pageList').classList.add('hidden');
-  document.getElementById('pageForm').classList.remove('hidden');
 }
 
 function deleteTask(id){
   tasks=tasks.filter(t=>t.id!==id);
   saveStorage();
-  render();
+  renderList();
+  showPage('pageList');
 }
 
-render();
+function backToList(){
+  renderList();
+  showPage('pageList');
+}
+
+renderList();
 </script>
 </body>
 </html>
