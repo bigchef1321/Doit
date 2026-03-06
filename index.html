@@ -1,253 +1,438 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<title>Tasks</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tâches</title>
 <style>
 :root{
-  --bg:#f2f2f7;
-  --card:#ffffff;
-  --text:#111111;
-  --muted:#8e8e93;
-  --accent:#4f5d50;
-  --danger:#ff3b30;
-  --radius:14px;
+--bg:#f5f5f7;
+--card:#ffffff;
+--text:#1d1d1f;
+--secondary:#6e6e73;
+--accent:#2e7d32;
+--border:#e5e5ea;
+--danger:#ff3b30;
+--radius:16px;
+--shadow:0 6px 20px rgba(0,0,0,0.08);
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
 }
 
-*{box-sizing:border-box}
+@media (prefers-color-scheme:dark){
+:root{
+--bg:#000;
+--card:#1c1c1e;
+--text:#fff;
+--secondary:#98989d;
+--border:#2c2c2e;
+}
+}
+
 body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  overflow-x:hidden;
+margin:0;
+background:var(--bg);
+color:var(--text);
 }
 
-header{padding:20px;font-size:28px;font-weight:700}
+header{
+padding:18px 20px 8px;
+font-size:28px;
+font-weight:700;
+}
 
-.container{padding:0 16px 120px 16px;max-width:700px;margin:auto;position:relative}
+.search{
+padding:0 16px 12px;
+}
 
-.page{position:absolute;width:100%;top:0;left:0;transition:transform .35s ease,opacity .25s ease}
-.hidden{opacity:0;pointer-events:none;transform:translateX(30px)}
-.active{opacity:1;pointer-events:auto;transform:translateX(0)}
+.search input{
+width:100%;
+padding:12px 14px;
+border-radius:12px;
+border:none;
+background:var(--card);
+box-shadow:var(--shadow);
+font-size:16px;
+}
 
-.list-item{background:var(--card);padding:16px;border-radius:var(--radius);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e5ea}
-.title{font-size:17px;font-weight:500}
-.subtitle{font-size:13px;color:var(--muted);margin-top:4px}
+.filters{
+display:flex;
+overflow-x:auto;
+gap:8px;
+padding:6px 16px 12px;
+}
 
-.badge{font-size:11px;padding:4px 8px;border-radius:999px;background:#e9ece8;color:var(--accent)}
+.filter{
+padding:8px 14px;
+border-radius:999px;
+background:var(--card);
+border:1px solid var(--border);
+font-size:14px;
+white-space:nowrap;
+cursor:pointer;
+}
 
-.fab{position:fixed;bottom:30px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:white;font-size:28px;display:flex;align-items:center;justify-content:center}
+.filter.active{
+background:var(--accent);
+color:#fff;
+border:none;
+}
 
-.card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:16px;border:1px solid #e5e5ea}
+.list{
+padding:0 12px 90px;
+}
 
-input,textarea,select{width:100%;padding:14px;margin-top:14px;border-radius:12px;border:1px solid #e5e5ea;font-size:16px}
-textarea{resize:vertical}
+.task{
+background:var(--card);
+padding:14px 16px;
+border-radius:var(--radius);
+margin-bottom:10px;
+box-shadow:var(--shadow);
+display:flex;
+flex-direction:column;
+gap:6px;
+cursor:pointer;
+}
 
-.file-buttons{display:flex;gap:10px;margin-top:14px}
-.file-buttons button{flex:1;padding:12px;border-radius:12px;border:1px solid #e5e5ea;background:#fafafa}
+.task-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
 
-.primary{background:var(--accent);color:white;border:none;padding:14px;width:100%;border-radius:12px;font-size:16px;margin-top:20px}
-.secondary{background:none;border:none;color:var(--danger);font-size:15px;margin-top:14px}
+.priority{
+font-size:12px;
+padding:4px 8px;
+border-radius:6px;
+color:#fff;
+}
 
-.images{display:flex;gap:10px;overflow-x:auto;margin-top:15px}
-.images img{height:120px;border-radius:12px;cursor:pointer}
+.p1{background:#ff3b30}
+.p2{background:#ff9f0a}
+.p3{background:#34c759}
 
-.preview-title{font-size:13px;color:var(--muted);margin-top:14px}
+.date{
+font-size:13px;
+color:var(--secondary);
+}
 
-.back{color:var(--accent);font-size:16px;margin-bottom:15px;display:inline-block}
+.fab{
+position:fixed;
+bottom:30px;
+right:20px;
+width:58px;
+height:58px;
+border-radius:50%;
+border:none;
+background:var(--accent);
+color:#fff;
+font-size:32px;
+box-shadow:var(--shadow);
+cursor:pointer;
+}
 
-/* image viewer */
-.viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:1000}
-.viewer img{max-width:95%;max-height:90%;border-radius:12px}
-.viewer.active{display:flex}
+.screen{
+display:none;
+padding-bottom:40px;
+}
+
+.screen.active{
+display:block;
+}
+
+.back{
+padding:16px;
+font-size:16px;
+color:var(--accent);
+cursor:pointer;
+}
+
+.form{
+padding:0 16px;
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+input,textarea,select{
+font-size:16px;
+padding:12px;
+border-radius:10px;
+border:1px solid var(--border);
+}
+
+textarea{min-height:80px}
+
+button.primary{
+padding:14px;
+background:var(--accent);
+border:none;
+border-radius:12px;
+color:#fff;
+font-size:16px;
+}
+
+button.delete{
+background:var(--danger);
+color:#fff;
+border:none;
+padding:12px;
+border-radius:10px;
+}
+
+.attachments{
+display:flex;
+gap:10px;
+overflow-x:auto;
+}
+
+.attachments img{
+height:90px;
+border-radius:10px;
+}
+
+.viewer{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:#000;
+display:none;
+justify-content:center;
+align-items:center;
+z-index:10;
+}
+
+.viewer img{
+max-width:100%;
+max-height:100%;
+}
 
 </style>
 </head>
 <body>
 
-<header>Tasks</header>
-
-<div class="container">
-<div id="pageList" class="page active"></div>
-<div id="pageDetail" class="page hidden"></div>
-<div id="pageForm" class="page hidden"></div>
+<div id="viewer" class="viewer" onclick="closeViewer()">
+<img id="viewerImg">
 </div>
 
-<div class="fab" onclick="openForm()">+</div>
+<div id="listScreen" class="screen active">
+<header>Tâches</header>
 
-<div id="viewer" class="viewer" onclick="closeViewer()">
-  <img id="viewerImg">
+<div class="search">
+<input id="search" placeholder="Rechercher">
+</div>
+
+<div class="filters">
+<div class="filter active" onclick="setFilter('all',this)">Toutes</div>
+<div class="filter" onclick="setFilter('todo',this)">À faire</div>
+<div class="filter" onclick="setFilter('doing',this)">En cours</div>
+<div class="filter" onclick="setFilter('done',this)">Terminées</div>
+</div>
+
+<div id="taskList" class="list"></div>
+
+<button class="fab" onclick="openForm()">+</button>
+</div>
+
+<div id="formScreen" class="screen">
+<div class="back" onclick="showList()">← Retour</div>
+
+<div class="form">
+<input id="title" placeholder="Titre">
+<textarea id="desc" placeholder="Description"></textarea>
+
+<select id="status">
+<option value="todo">À faire</option>
+<option value="doing">En cours</option>
+<option value="done">Terminée</option>
+</select>
+
+<select id="priority">
+<option value="1">Priorité haute</option>
+<option value="2">Priorité moyenne</option>
+<option value="3">Priorité basse</option>
+</select>
+
+<input type="date" id="date">
+
+<input type="file" id="files" multiple accept="image/*">
+
+<div id="preview" class="attachments"></div>
+
+<button class="primary" onclick="saveTask()">Valider</button>
+<button class="delete" onclick="deleteTask()">Supprimer</button>
+</div>
 </div>
 
 <script>
-let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
-let tempImages=[];
+let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
+let current=null
+let filter="all"
 
-function saveStorage(){localStorage.setItem('tasks',JSON.stringify(tasks));}
-
-function switchPage(showId){
- document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.classList.add('hidden')});
- const page=document.getElementById(showId);
- page.classList.remove('hidden');
- setTimeout(()=>page.classList.add('active'),10);
+function save(){
+localStorage.setItem("tasks",JSON.stringify(tasks))
 }
 
-function renderList(){
- const page=document.getElementById('pageList');
- page.innerHTML='';
+function render(){
+let list=document.getElementById("taskList")
+list.innerHTML=""
 
- tasks.forEach(t=>{
-  const div=document.createElement('div');
-  div.className='list-item';
-  div.onclick=()=>openDetail(t.id);
+let search=document.getElementById("search").value.toLowerCase()
 
-  div.innerHTML=`
-  <div>
-   <div class="title">${t.title}</div>
-   <div class="subtitle">${t.dueDate||''}</div>
-  </div>
-  <div class="badge">${label(t.status)}</div>`;
+let sorted=[...tasks].sort((a,b)=>a.priority-b.priority||new Date(a.date)-new Date(b.date))
 
-  page.appendChild(div);
- });
+sorted.forEach((t,i)=>{
+
+if(filter!="all" && t.status!=filter)return
+
+if(!t.title.toLowerCase().includes(search))return
+
+let div=document.createElement("div")
+
+div.className="task"
+
+div.onclick=()=>editTask(i)
+
+let prClass="p"+t.priority
+
+let pLabel=["","Haute","Moyenne","Basse"][t.priority]
+
+div.innerHTML=`
+<div class="task-top">
+<strong>${t.title}</strong>
+<span class="priority ${prClass}">${pLabel}</span>
+</div>
+<div class="date">${t.date||""}</div>
+`
+
+list.appendChild(div)
+})
 }
 
-function label(s){return s==='todo'?'À faire':s==='doing'?'En cours':'Terminée'}
-
-function openDetail(id){
- const t=tasks.find(t=>t.id===id);
- const page=document.getElementById('pageDetail');
-
- page.innerHTML=`
- <div class="back" onclick="switchPage('pageList')">← Retour</div>
- <div class="card">
-  <h2>${t.title}</h2>
-  <div class="badge">${label(t.status)}</div>
-  <p>${t.description||''}</p>
-  ${t.dueDate?`<div class="subtitle">Échéance : ${t.dueDate}</div>`:''}
-
-  <div class="images">
-   ${(t.images||[]).map(i=>`<img src="${i}" onclick="event.stopPropagation();openViewer('${i}')">`).join('')}
-  </div>
-
-  <button class="primary" onclick="openForm('${t.id}')">Modifier</button>
-  <button class="secondary" onclick="deleteTask('${t.id}')">Supprimer</button>
- </div>`;
-
- switchPage('pageDetail');
+function openForm(){
+current=null
+show("formScreen")
+clearForm()
 }
 
-function openViewer(src){
- const v=document.getElementById('viewer');
- document.getElementById('viewerImg').src=src;
- v.classList.add('active');
+function editTask(i){
+current=i
+let t=tasks[i]
+
+show("formScreen")
+
+document.getElementById("title").value=t.title
+
+document.getElementById("desc").value=t.desc
+
+document.getElementById("status").value=t.status
+
+document.getElementById("priority").value=t.priority
+
+document.getElementById("date").value=t.date
+
+showImages(t.images||[])
 }
 
-function closeViewer(){
- document.getElementById('viewer').classList.remove('active');
-}
-
-function openForm(id=null){
- const page=document.getElementById('pageForm');
- let t={title:'',description:'',dueDate:'',status:'todo',images:[]};
- if(id){t=tasks.find(x=>x.id===id)}
-
- tempImages=[...(t.images||[])];
-
- page.innerHTML=`
- <div class="back" onclick="switchPage('pageList')">← Retour</div>
- <div class="card">
-
- <input type="hidden" id="editId" value="${id||''}">
-
- <input type="text" id="title" placeholder="Titre" value="${t.title||''}">
-
- <textarea id="description" placeholder="Description">${t.description||''}</textarea>
-
- <input type="date" id="dueDate" value="${t.dueDate||''}">
-
- <select id="status">
- <option value="todo" ${t.status==='todo'?'selected':''}>À faire</option>
- <option value="doing" ${t.status==='doing'?'selected':''}>En cours</option>
- <option value="done" ${t.status==='done'?'selected':''}>Terminée</option>
- </select>
-
- <div class="file-buttons">
- <button onclick="document.getElementById('fileInput').click()">Ajouter fichiers</button>
- <button onclick="document.getElementById('cameraInput').click()">Prendre photo</button>
- </div>
-
- <input type="file" id="fileInput" accept="image/*" multiple hidden onchange="loadFiles(this.files)">
- <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple hidden onchange="loadFiles(this.files)">
-
- <div class="preview-title">Pièces jointes</div>
- <div class="images" id="previewImages"></div>
-
- <button class="primary" onclick="saveTask()">Valider</button>
-
- </div>`;
-
- renderPreview();
- switchPage('pageForm');
-}
-
-function loadFiles(files){
- [...files].forEach(f=>{
-  const r=new FileReader();
-  r.onload=e=>{
-   tempImages.push(e.target.result);
-   renderPreview();
-  };
-  r.readAsDataURL(f);
- });
-}
-
-function renderPreview(){
- const zone=document.getElementById('previewImages');
- if(!zone)return;
-
- zone.innerHTML=tempImages.map((img,i)=>
- `<img src="${img}" onclick="openViewer('${img}')">`
- ).join('');
+function clearForm(){
+document.getElementById("title").value=""
+document.getElementById("desc").value=""
+document.getElementById("date").value=""
+document.getElementById("preview").innerHTML=""
 }
 
 function saveTask(){
- const id=document.getElementById('editId').value;
- const title=document.getElementById('title').value.trim();
- if(!title)return;
+let t={
 
- const description=document.getElementById('description').value;
- const dueDate=document.getElementById('dueDate').value;
- const status=document.getElementById('status').value;
+title:title.value,
+desc:desc.value,
+status:status.value,
+priority:Number(priority.value),
+date:date.value,
+images:tasks[current]?.images||[]
 
- if(id){
-  const t=tasks.find(t=>t.id===id);
-  t.title=title;
-  t.description=description;
-  t.dueDate=dueDate;
-  t.status=status;
-  t.images=[...tempImages];
- }else{
-  tasks.push({id:crypto.randomUUID(),title,description,dueDate,status,images:[...tempImages]});
- }
-
- saveStorage();
- renderList();
- switchPage('pageList');
 }
 
-function deleteTask(id){
- tasks=tasks.filter(t=>t.id!==id);
- saveStorage();
- renderList();
- switchPage('pageList');
+let files=document.getElementById("files").files
+
+if(files.length){
+let readers=[...files].map(file=>new Promise(res=>{
+let r=new FileReader()
+r.onload=e=>res(e.target.result)
+r.readAsDataURL(file)
+}))
+
+Promise.all(readers).then(imgs=>{
+t.images=t.images.concat(imgs)
+finishSave(t)
+})
+}else{
+finishSave(t)
+}
 }
 
-renderList();
+function finishSave(t){
+if(current!=null)tasks[current]=t
+else tasks.push(t)
+
+save()
+showList()
+}
+
+function deleteTask(){
+if(current!=null){
+tasks.splice(current,1)
+save()
+showList()
+}
+}
+
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"))
+document.getElementById(id).classList.add("active")
+}
+
+function showList(){
+show("listScreen")
+render()
+}
+
+function setFilter(f,el){
+filter=f
+
+document.querySelectorAll(".filter").forEach(b=>b.classList.remove("active"))
+
+el.classList.add("active")
+
+render()
+}
+
+function showImages(images){
+let p=document.getElementById("preview")
+p.innerHTML=""
+
+images.forEach(src=>{
+let img=document.createElement("img")
+img.src=src
+img.onclick=()=>openViewer(src)
+p.appendChild(img)
+})
+}
+
+function openViewer(src){
+viewer.style.display="flex"
+viewerImg.src=src
+}
+
+function closeViewer(){
+viewer.style.display="none"
+}
+
+search.oninput=render
+
+render()
 </script>
+
 </body>
 </html>
