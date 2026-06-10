@@ -1,438 +1,706 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tâches</title>
-<style>
-:root{
---bg:#f5f5f7;
---card:#ffffff;
---text:#1d1d1f;
---secondary:#6e6e73;
---accent:#2e7d32;
---border:#e5e5ea;
---danger:#ff3b30;
---radius:16px;
---shadow:0 6px 20px rgba(0,0,0,0.08);
-font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
-}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mon Espace Personnel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-@media (prefers-color-scheme:dark){
-:root{
---bg:#000;
---card:#1c1c1e;
---text:#fff;
---secondary:#98989d;
---border:#2c2c2e;
-}
-}
+    :root {
+      --bg:        #1A1B2E;
+      --surface:   #23253A;
+      --surface2:  #2D2F4A;
+      --border:    #3A3C58;
+      --violet:    #7C6FCD;
+      --violet-lt: #A99EE0;
+      --gold:      #D4AF6A;
+      --cream:     #F0EDE8;
+      --muted:     #8A8BA8;
+      --danger:    #E07C7C;
+      --success:   #6CC68A;
+      --radius:    12px;
+      --radius-sm: 7px;
+      --shadow:    0 4px 24px rgba(0,0,0,0.35);
+      --transition: 0.22s ease;
+    }
 
-body{
-margin:0;
-background:var(--bg);
-color:var(--text);
-}
+    body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-header{
-padding:18px 20px 8px;
-font-size:28px;
-font-weight:700;
-}
+    /* ── Background texture ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,111,205,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 90%, rgba(212,175,106,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-.search{
-padding:0 16px 12px;
-}
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 16px 60px;
+    }
 
-.search input{
-width:100%;
-padding:12px 14px;
-border-radius:12px;
-border:none;
-background:var(--card);
-box-shadow:var(--shadow);
-font-size:16px;
-}
+    /* ── Header ── */
+    header {
+      padding: 40px 0 28px;
+      text-align: center;
+    }
+    header .eyebrow {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1.15;
+    }
+    header h1 em {
+      font-style: italic;
+      color: var(--violet-lt);
+    }
 
-.filters{
-display:flex;
-overflow-x:auto;
-gap:8px;
-padding:6px 16px 12px;
-}
+    /* ── Tab nav ── */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 5px;
+      margin: 24px auto 36px;
+      max-width: 420px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 10px 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--cream); }
+    .tab-btn.active {
+      background: var(--violet);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(124,111,205,0.35);
+    }
 
-.filter{
-padding:8px 14px;
-border-radius:999px;
-background:var(--card);
-border:1px solid var(--border);
-font-size:14px;
-white-space:nowrap;
-cursor:pointer;
-}
+    /* ── Panels ── */
+    .panel { display: none; animation: fadeUp 0.3s ease both; }
+    .panel.active { display: block; }
 
-.filter.active{
-background:var(--accent);
-color:#fff;
-border:none;
-}
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-.list{
-padding:0 12px 90px;
-}
+    /* ── Section heading ── */
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .section-head h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .count-badge {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
 
-.task{
-background:var(--card);
-padding:14px 16px;
-border-radius:var(--radius);
-margin-bottom:10px;
-box-shadow:var(--shadow);
-display:flex;
-flex-direction:column;
-gap:6px;
-cursor:pointer;
-}
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .card:hover { border-color: var(--border); box-shadow: var(--shadow); }
 
-.task-top{
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
+    /* ════════════════════════════
+       TODO LIST
+    ════════════════════════════ */
+    .todo-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 28px;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .input-field {
+      flex: 1;
+      min-width: 180px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .input-field::placeholder { color: var(--muted); }
+    .input-field:focus { border-color: var(--violet); }
 
-.priority{
-font-size:12px;
-padding:4px 8px;
-border-radius:6px;
-color:#fff;
-}
+    select.input-field { cursor: pointer; appearance: none; padding-right: 30px; }
 
-.p1{background:#ff3b30}
-.p2{background:#ff9f0a}
-.p3{background:#34c759}
+    .btn {
+      background: var(--violet);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 11px 22px;
+      transition: background var(--transition), transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--violet-lt); }
+    .btn:active { transform: scale(0.97); }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #f09090; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--violet); color: var(--cream); background: transparent; }
 
-.date{
-font-size:13px;
-color:var(--secondary);
-}
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      padding: 5px 14px;
+      transition: all var(--transition);
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--surface2);
+      border-color: var(--violet);
+      color: var(--cream);
+    }
 
-.fab{
-position:fixed;
-bottom:30px;
-right:20px;
-width:58px;
-height:58px;
-border-radius:50%;
-border:none;
-background:var(--accent);
-color:#fff;
-font-size:32px;
-box-shadow:var(--shadow);
-cursor:pointer;
-}
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .todo-check {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+      transition: all var(--transition);
+      font-size: 13px;
+      color: transparent;
+    }
+    .todo-item.done .todo-check {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
 
-.screen{
-display:none;
-padding-bottom:40px;
-}
+    .todo-body { flex: 1; }
+    .todo-text { font-size: 0.95rem; line-height: 1.5; }
+    .todo-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
 
-.screen.active{
-display:block;
-}
+    .priority-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+    .priority-haute  { background: rgba(224,124,124,0.18); color: var(--danger); }
+    .priority-moyenne { background: rgba(212,175,106,0.18); color: var(--gold); }
+    .priority-basse   { background: rgba(108,198,138,0.18); color: var(--success); }
 
-.back{
-padding:16px;
-font-size:16px;
-color:var(--accent);
-cursor:pointer;
-}
+    .todo-date { font-size: 0.72rem; color: var(--muted); }
+    .todo-actions { flex-shrink: 0; display: flex; gap: 6px; }
 
-.form{
-padding:0 16px;
-display:flex;
-flex-direction:column;
-gap:12px;
-}
+    .empty-state {
+      text-align: center;
+      padding: 52px 20px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.6; }
+    .empty-state p { font-size: 0.9rem; }
 
-input,textarea,select{
-font-size:16px;
-padding:12px;
-border-radius:10px;
-border:1px solid var(--border);
-}
+    /* ════════════════════════════
+       CITATIONS & MOTS
+    ════════════════════════════ */
+    .entry-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      margin-bottom: 28px;
+    }
+    .entry-form h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--violet-lt);
+    }
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+    textarea.input-field {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      line-height: 1.6;
+    }
 
-textarea{min-height:80px}
+    /* type toggle */
+    .type-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .type-btn {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      padding: 8px;
+      transition: all var(--transition);
+    }
+    .type-btn.active {
+      background: rgba(124,111,205,0.2);
+      border-color: var(--violet);
+      color: var(--violet-lt);
+    }
 
-button.primary{
-padding:14px;
-background:var(--accent);
-border:none;
-border-radius:12px;
-color:#fff;
-font-size:16px;
-}
+    .entry-card { position: relative; }
 
-button.delete{
-background:var(--danger);
-color:#fff;
-border:none;
-padding:12px;
-border-radius:10px;
-}
+    .entry-type-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    .type-citation  { background: rgba(212,175,106,0.15); color: var(--gold); }
+    .type-mot       { background: rgba(124,111,205,0.15); color: var(--violet-lt); }
 
-.attachments{
-display:flex;
-gap:10px;
-overflow-x:auto;
-}
+    .entry-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+    .entry-citation { font-style: italic; }
 
-.attachments img{
-height:90px;
-border-radius:10px;
-}
+    .entry-sub {
+      font-size: 0.83rem;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .entry-def {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: #cac8e4;
+    }
+    .entry-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .entry-date { font-size: 0.72rem; color: var(--muted); }
 
-.viewer{
-position:fixed;
-top:0;
-left:0;
-right:0;
-bottom:0;
-background:#000;
-display:none;
-justify-content:center;
-align-items:center;
-z-index:10;
-}
+    .search-bar {
+      position: relative;
+      margin-bottom: 18px;
+    }
+    .search-bar .input-field { width: 100%; padding-left: 38px; }
+    .search-icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
 
-.viewer img{
-max-width:100%;
-max-height:100%;
-}
+    /* divider rule between form sections */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
 
-</style>
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 500px) {
+      .input-row { flex-direction: column; }
+      .todo-actions { gap: 4px; }
+    }
+  </style>
 </head>
 <body>
+<div class="app">
 
-<div id="viewer" class="viewer" onclick="closeViewer()">
-<img id="viewerImg">
-</div>
+  <header>
+    <p class="eyebrow">Espace personnel</p>
+    <h1>Mon <em>Carnet</em> Numérique</h1>
+  </header>
 
-<div id="listScreen" class="screen active">
-<header>Tâches</header>
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('todo', this)">✓ Tâches</button>
+    <button class="tab-btn"        onclick="switchTab('entries', this)">✦ Citations & Mots</button>
+  </nav>
 
-<div class="search">
-<input id="search" placeholder="Rechercher">
-</div>
+  <!-- ════════ TODO PANEL ════════ -->
+  <div id="panel-todo" class="panel active">
 
-<div class="filters">
-<div class="filter active" onclick="setFilter('all',this)">Toutes</div>
-<div class="filter" onclick="setFilter('todo',this)">À faire</div>
-<div class="filter" onclick="setFilter('doing',this)">En cours</div>
-<div class="filter" onclick="setFilter('done',this)">Terminées</div>
-</div>
+    <div class="todo-form card">
+      <div class="input-row">
+        <input id="todo-input" class="input-field" type="text"
+               placeholder="Ajouter une tâche…" onkeydown="if(event.key==='Enter') addTodo()"/>
+        <select id="todo-priority" class="input-field" style="max-width:140px">
+          <option value="haute">🔴 Haute</option>
+          <option value="moyenne" selected>🟡 Moyenne</option>
+          <option value="basse">🟢 Basse</option>
+        </select>
+        <button class="btn" onclick="addTodo()">Ajouter</button>
+      </div>
+    </div>
 
-<div id="taskList" class="list"></div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('all', this)">Toutes</button>
+      <button class="filter-btn"        onclick="setFilter('active', this)">À faire</button>
+      <button class="filter-btn"        onclick="setFilter('done', this)">Terminées</button>
+      <button class="filter-btn"        onclick="setFilter('haute', this)">🔴 Haute</button>
+      <button class="filter-btn"        onclick="setFilter('moyenne', this)">🟡 Moyenne</button>
+      <button class="filter-btn"        onclick="setFilter('basse', this)">🟢 Basse</button>
+    </div>
 
-<button class="fab" onclick="openForm()">+</button>
-</div>
+    <div class="section-head">
+      <h2>Mes tâches</h2>
+      <span id="todo-count" class="count-badge">0</span>
+    </div>
 
-<div id="formScreen" class="screen">
-<div class="back" onclick="showList()">← Retour</div>
+    <div id="todo-list"></div>
+  </div>
 
-<div class="form">
-<input id="title" placeholder="Titre">
-<textarea id="desc" placeholder="Description"></textarea>
+  <!-- ════════ ENTRIES PANEL ════════ -->
+  <div id="panel-entries" class="panel">
 
-<select id="status">
-<option value="todo">À faire</option>
-<option value="doing">En cours</option>
-<option value="done">Terminée</option>
-</select>
+    <div class="entry-form">
+      <h3>Ajouter une entrée</h3>
 
-<select id="priority">
-<option value="1">Priorité haute</option>
-<option value="2">Priorité moyenne</option>
-<option value="3">Priorité basse</option>
-</select>
+      <div class="type-toggle">
+        <button class="type-btn active" id="type-citation" onclick="setEntryType('citation', this)">✦ Citation</button>
+        <button class="type-btn"        id="type-mot"      onclick="setEntryType('mot', this)">◈ Mot à retenir</button>
+      </div>
 
-<input type="date" id="date">
+      <div class="form-grid">
+        <!-- Citation fields -->
+        <div id="fields-citation">
+          <textarea id="entry-text" class="input-field" placeholder="Entrez la citation…"></textarea>
+          <input id="entry-author" class="input-field" style="margin-top:10px" type="text" placeholder="Auteur (facultatif)"/>
+        </div>
 
-<input type="file" id="files" multiple accept="image/*">
+        <!-- Mot fields -->
+        <div id="fields-mot" style="display:none">
+          <input id="entry-mot" class="input-field" type="text" placeholder="Mot ou concept…"/>
+          <textarea id="entry-definition" class="input-field" style="margin-top:10px" placeholder="Définition ou explication…"></textarea>
+        </div>
 
-<div id="preview" class="attachments"></div>
+        <button class="btn" style="justify-self:start; margin-top:4px" onclick="addEntry()">Enregistrer</button>
+      </div>
+    </div>
 
-<button class="primary" onclick="saveTask()">Valider</button>
-<button class="delete" onclick="deleteTask()">Supprimer</button>
-</div>
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderEntries(this.value)"/>
+    </div>
+
+    <div class="section-head">
+      <h2>Ma collection</h2>
+      <span id="entry-count" class="count-badge">0</span>
+    </div>
+
+    <div id="entry-list"></div>
+  </div>
+
 </div>
 
 <script>
-let tasks=JSON.parse(localStorage.getItem("tasks")||"[]")
-let current=null
-let filter="all"
+  // ── State ──────────────────────────────────────────
+  let todos   = JSON.parse(localStorage.getItem('todos')   || '[]');
+  let entries = JSON.parse(localStorage.getItem('entries') || '[]');
+  let todoFilter  = 'all';
+  let entryType   = 'citation';
 
-function save(){
-localStorage.setItem("tasks",JSON.stringify(tasks))
-}
+  function save() {
+    localStorage.setItem('todos',   JSON.stringify(todos));
+    localStorage.setItem('entries', JSON.stringify(entries));
+  }
 
-function render(){
-let list=document.getElementById("taskList")
-list.innerHTML=""
+  // ── Tabs ───────────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
 
-let search=document.getElementById("search").value.toLowerCase()
+  // ── TODO ───────────────────────────────────────────
+  function addTodo() {
+    const text = document.getElementById('todo-input').value.trim();
+    if (!text) return;
+    todos.unshift({
+      id:       Date.now(),
+      text,
+      priority: document.getElementById('todo-priority').value,
+      done:     false,
+      date:     new Date().toLocaleDateString('fr-FR')
+    });
+    save();
+    document.getElementById('todo-input').value = '';
+    renderTodos();
+  }
 
-let sorted=[...tasks].sort((a,b)=>a.priority-b.priority||new Date(a.date)-new Date(b.date))
+  function toggleTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); renderTodos(); }
+  }
 
-sorted.forEach((t,i)=>{
+  function deleteTodo(id) {
+    todos = todos.filter(t => t.id !== id);
+    save(); renderTodos();
+  }
 
-if(filter!="all" && t.status!=filter)return
+  function setFilter(f, btn) {
+    todoFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTodos();
+  }
 
-if(!t.title.toLowerCase().includes(search))return
+  function renderTodos() {
+    let visible = todos;
+    if (todoFilter === 'active')  visible = todos.filter(t => !t.done);
+    if (todoFilter === 'done')    visible = todos.filter(t =>  t.done);
+    if (['haute','moyenne','basse'].includes(todoFilter))
+      visible = todos.filter(t => t.priority === todoFilter);
 
-let div=document.createElement("div")
+    document.getElementById('todo-count').textContent =
+      visible.length + ' tâche' + (visible.length !== 1 ? 's' : '');
 
-div.className="task"
+    const list = document.getElementById('todo-list');
+    if (!visible.length) {
+      list.innerHTML = `<div class="empty-state">
+        <div class="icon">📋</div>
+        <p>Aucune tâche ici.<br>Ajoutez-en une ci-dessus.</p>
+      </div>`;
+      return;
+    }
 
-div.onclick=()=>editTask(i)
+    const priorityLabel = { haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse' };
 
-let prClass="p"+t.priority
+    list.innerHTML = visible.map(t => `
+      <div class="card todo-item ${t.done ? 'done' : ''}">
+        <div class="todo-check" onclick="toggleTodo(${t.id})">${t.done ? '✓' : ''}</div>
+        <div class="todo-body">
+          <div class="todo-text">${escHtml(t.text)}</div>
+          <div class="todo-meta">
+            <span class="priority-badge priority-${t.priority}">${priorityLabel[t.priority]}</span>
+            <span class="todo-date">${t.date}</span>
+          </div>
+        </div>
+        <div class="todo-actions">
+          <button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
 
-let pLabel=["","Haute","Moyenne","Basse"][t.priority]
+  // ── ENTRIES ────────────────────────────────────────
+  function setEntryType(type, btn) {
+    entryType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('fields-citation').style.display = type === 'citation' ? '' : 'none';
+    document.getElementById('fields-mot').style.display      = type === 'mot'      ? '' : 'none';
+  }
 
-div.innerHTML=`
-<div class="task-top">
-<strong>${t.title}</strong>
-<span class="priority ${prClass}">${pLabel}</span>
-</div>
-<div class="date">${t.date||""}</div>
-`
+  function addEntry() {
+    let entry;
+    if (entryType === 'citation') {
+      const text = document.getElementById('entry-text').value.trim();
+      if (!text) return;
+      entry = {
+        id:     Date.now(),
+        type:   'citation',
+        text,
+        author: document.getElementById('entry-author').value.trim(),
+        date:   new Date().toLocaleDateString('fr-FR')
+      };
+      document.getElementById('entry-text').value = '';
+      document.getElementById('entry-author').value = '';
+    } else {
+      const mot = document.getElementById('entry-mot').value.trim();
+      const def = document.getElementById('entry-definition').value.trim();
+      if (!mot || !def) return;
+      entry = {
+        id:         Date.now(),
+        type:       'mot',
+        mot,
+        definition: def,
+        date:       new Date().toLocaleDateString('fr-FR')
+      };
+      document.getElementById('entry-mot').value = '';
+      document.getElementById('entry-definition').value = '';
+    }
+    entries.unshift(entry);
+    save();
+    renderEntries();
+  }
 
-list.appendChild(div)
-})
-}
+  function deleteEntry(id) {
+    entries = entries.filter(e => e.id !== id);
+    save(); renderEntries();
+  }
 
-function openForm(){
-current=null
-show("formScreen")
-clearForm()
-}
+  function renderEntries(search = '') {
+    const q = search.toLowerCase();
+    const visible = entries.filter(e => {
+      if (e.type === 'citation')
+        return e.text.toLowerCase().includes(q) || (e.author||'').toLowerCase().includes(q);
+      return e.mot.toLowerCase().includes(q) || e.definition.toLowerCase().includes(q);
+    });
 
-function editTask(i){
-current=i
-let t=tasks[i]
+    document.getElementById('entry-count').textContent =
+      visible.length + ' entrée' + (visible.length !== 1 ? 's' : '');
 
-show("formScreen")
+    const list = document.getElementById('entry-list');
+    if (!visible.length) {
+      list.innerHTML = `<div class="empty-state">
+        <div class="icon">✦</div>
+        <p>Aucune entrée trouvée.<br>Ajoutez une citation ou un mot ci-dessus.</p>
+      </div>`;
+      return;
+    }
 
-document.getElementById("title").value=t.title
+    list.innerHTML = visible.map(e => {
+      if (e.type === 'citation') return `
+        <div class="card entry-card">
+          <span class="entry-type-label type-citation">✦ Citation</span>
+          <div class="entry-title entry-citation">"${escHtml(e.text)}"</div>
+          ${e.author ? `<div class="entry-sub">— ${escHtml(e.author)}</div>` : ''}
+          <div class="entry-footer">
+            <span class="entry-date">${e.date}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
+          </div>
+        </div>`;
+      return `
+        <div class="card entry-card">
+          <span class="entry-type-label type-mot">◈ Mot</span>
+          <div class="entry-title">${escHtml(e.mot)}</div>
+          <div class="entry-def">${escHtml(e.definition)}</div>
+          <div class="entry-footer">
+            <span class="entry-date">${e.date}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
 
-document.getElementById("desc").value=t.desc
+  // ── Utils ──────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
-document.getElementById("status").value=t.status
-
-document.getElementById("priority").value=t.priority
-
-document.getElementById("date").value=t.date
-
-showImages(t.images||[])
-}
-
-function clearForm(){
-document.getElementById("title").value=""
-document.getElementById("desc").value=""
-document.getElementById("date").value=""
-document.getElementById("preview").innerHTML=""
-}
-
-function saveTask(){
-let t={
-
-title:title.value,
-desc:desc.value,
-status:status.value,
-priority:Number(priority.value),
-date:date.value,
-images:tasks[current]?.images||[]
-
-}
-
-let files=document.getElementById("files").files
-
-if(files.length){
-let readers=[...files].map(file=>new Promise(res=>{
-let r=new FileReader()
-r.onload=e=>res(e.target.result)
-r.readAsDataURL(file)
-}))
-
-Promise.all(readers).then(imgs=>{
-t.images=t.images.concat(imgs)
-finishSave(t)
-})
-}else{
-finishSave(t)
-}
-}
-
-function finishSave(t){
-if(current!=null)tasks[current]=t
-else tasks.push(t)
-
-save()
-showList()
-}
-
-function deleteTask(){
-if(current!=null){
-tasks.splice(current,1)
-save()
-showList()
-}
-}
-
-function show(id){
-document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"))
-document.getElementById(id).classList.add("active")
-}
-
-function showList(){
-show("listScreen")
-render()
-}
-
-function setFilter(f,el){
-filter=f
-
-document.querySelectorAll(".filter").forEach(b=>b.classList.remove("active"))
-
-el.classList.add("active")
-
-render()
-}
-
-function showImages(images){
-let p=document.getElementById("preview")
-p.innerHTML=""
-
-images.forEach(src=>{
-let img=document.createElement("img")
-img.src=src
-img.onclick=()=>openViewer(src)
-p.appendChild(img)
-})
-}
-
-function openViewer(src){
-viewer.style.display="flex"
-viewerImg.src=src
-}
-
-function closeViewer(){
-viewer.style.display="none"
-}
-
-search.oninput=render
-
-render()
+  // ── Init ───────────────────────────────────────────
+  renderTodos();
+  renderEntries();
 </script>
-
 </body>
 </html>
