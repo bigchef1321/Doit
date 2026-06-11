@@ -1,14 +1,728 @@
-TO-DO
-Mes tâches
-0
-Toutes
-À faire
-Terminées
-🔴 Haute
-🟡 Moyenne
-🟢 Basse
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mon Carnet Numérique</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-✓
-Tâches ＋
-✦
-Citations
+    :root {
+      --bg:        #1A1B2E;
+      --surface:   #23253A;
+      --surface2:  #2D2F4A;
+      --border:    #3A3C58;
+      --violet:    #7C6FCD;
+      --violet-lt: #A99EE0;
+      --gold:      #D4AF6A;
+      --cream:     #F0EDE8;
+      --muted:     #8A8BA8;
+      --danger:    #E07C7C;
+      --success:   #6CC68A;
+      --radius:    12px;
+      --radius-sm: 7px;
+      --shadow:    0 4px 28px rgba(0,0,0,0.4);
+      --transition: 0.22s ease;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,111,205,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 90%, rgba(212,175,106,0.06) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ══════════════════════════════
+       SCREEN SYSTEM
+    ══════════════════════════════ */
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 16px 100px;
+      animation: fadeUp 0.28s ease both;
+    }
+    .screen.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════
+       HEADER
+    ══════════════════════════════ */
+    .page-header {
+      padding: 36px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .page-header.centered { justify-content: center; flex-direction: column; text-align: center; padding: 40px 0 28px; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.7rem, 5vw, 2.4rem);
+      font-weight: 700; line-height: 1.15;
+    }
+    .page-header h1 em { font-style: italic; color: var(--violet-lt); }
+    .page-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem; font-weight: 700;
+      flex: 1;
+    }
+
+    /* back button */
+    .back-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--muted);
+      cursor: pointer;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+    .back-btn:hover { border-color: var(--violet); color: var(--cream); }
+
+    /* ══════════════════════════════
+       BOTTOM NAV
+    ══════════════════════════════ */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around;
+      padding: 10px 20px 14px;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .nav-btn {
+      background: none; border: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem; font-weight: 500;
+      padding: 6px 18px;
+      border-radius: 10px;
+      transition: all var(--transition);
+    }
+    .nav-btn .nav-icon { font-size: 1.3rem; }
+    .nav-btn.active { color: var(--violet); }
+    .nav-btn.active .nav-icon { filter: drop-shadow(0 0 6px rgba(124,111,205,0.5)); }
+
+    /* ── FAB (floating + button) ── */
+    .fab {
+      width: 56px; height: 56px;
+      background: var(--violet);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1.7rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(124,111,205,0.5);
+      transition: background var(--transition), transform 0.15s, box-shadow var(--transition);
+      flex-shrink: 0;
+      margin-bottom: 4px;
+    }
+    .fab:hover  { background: var(--violet-lt); box-shadow: 0 6px 28px rgba(124,111,205,0.6); }
+    .fab:active { transform: scale(0.93); }
+
+    /* ══════════════════════════════
+       SHARED COMPONENTS
+    ══════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      transition: box-shadow var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow); }
+
+    .input-field {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.92rem;
+      padding: 12px 15px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .input-field::placeholder { color: var(--muted); }
+    .input-field:focus { border-color: var(--violet); }
+    select.input-field { cursor: pointer; }
+    textarea.input-field { min-height: 100px; resize: vertical; line-height: 1.6; }
+
+    .btn {
+      background: var(--violet);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; font-weight: 600;
+      padding: 12px 24px;
+      transition: background var(--transition), transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover  { background: var(--violet-lt); }
+    .btn:active { transform: scale(0.97); }
+    .btn-full   { width: 100%; }
+    .btn-sm     { padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #f09090; }
+
+    .count-badge {
+      font-size: 0.78rem; color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+    .section-head {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 56px 20px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 2.6rem; margin-bottom: 14px; opacity: 0.55; }
+    .empty-state p { font-size: 0.9rem; line-height: 1.7; }
+
+    /* ══════════════════════════════
+       SCREEN 1 — TODO LIST
+    ══════════════════════════════ */
+    .filter-bar {
+      display: flex; gap: 6px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      padding: 5px 13px;
+      transition: all var(--transition);
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--surface2);
+      border-color: var(--violet);
+      color: var(--cream);
+    }
+
+    .todo-item {
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .todo-check {
+      flex-shrink: 0;
+      width: 23px; height: 23px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+      font-size: 13px; color: transparent;
+      transition: all var(--transition);
+    }
+    .todo-item.done .todo-check {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
+    .todo-body { flex: 1; }
+    .todo-text  { font-size: 0.95rem; line-height: 1.5; }
+    .todo-meta  {
+      display: flex; gap: 8px; align-items: center;
+      margin-top: 6px; flex-wrap: wrap;
+    }
+    .priority-badge {
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.4px;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+    .priority-haute   { background: rgba(224,124,124,0.18); color: var(--danger); }
+    .priority-moyenne { background: rgba(212,175,106,0.18); color: var(--gold); }
+    .priority-basse   { background: rgba(108,198,138,0.18); color: var(--success); }
+    .todo-date  { font-size: 0.72rem; color: var(--muted); }
+    .todo-actions { flex-shrink: 0; }
+
+    /* ══════════════════════════════
+       SCREEN 2 — ADD TODO (form)
+    ══════════════════════════════ */
+    .form-stack { display: flex; flex-direction: column; gap: 14px; }
+    .form-label {
+      display: block;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .form-group { display: flex; flex-direction: column; }
+
+    /* ══════════════════════════════
+       SCREEN 3 — ENTRIES LIST
+    ══════════════════════════════ */
+    .search-bar { position: relative; margin-bottom: 18px; }
+    .search-bar .input-field { padding-left: 38px; }
+    .search-icon {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted); font-size: 14px;
+      pointer-events: none;
+    }
+
+    .entry-type-label {
+      font-size: 0.67rem; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 4px;
+      display: inline-block; margin-bottom: 10px;
+    }
+    .type-citation { background: rgba(212,175,106,0.15); color: var(--gold); }
+    .type-mot      { background: rgba(124,111,205,0.15); color: var(--violet-lt); }
+
+    .entry-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem; font-weight: 700;
+      line-height: 1.35; margin-bottom: 8px;
+    }
+    .entry-citation { font-style: italic; }
+    .entry-sub  { font-size: 0.83rem; color: var(--gold); margin-bottom: 10px; }
+    .entry-def  { font-size: 0.9rem; line-height: 1.7; color: #cac8e4; }
+    .entry-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 14px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .entry-date { font-size: 0.72rem; color: var(--muted); }
+
+    /* ══════════════════════════════
+       SCREEN 4 — ADD ENTRY (form)
+    ══════════════════════════════ */
+    .type-toggle {
+      display: flex; gap: 8px;
+    }
+    .type-btn {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; padding: 10px;
+      transition: all var(--transition);
+    }
+    .type-btn.active {
+      background: rgba(124,111,205,0.2);
+      border-color: var(--violet);
+      color: var(--violet-lt);
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 480px) {
+      .fab { width: 50px; height: 50px; font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     SCREEN 1 : LISTE DES TÂCHES
+════════════════════════════════════════ -->
+<div id="screen-todos" class="screen active">
+  <div class="page-header">
+    <div style="flex:1">
+      <p class="eyebrow">To-Do</p>
+      <h1>Mes <em>tâches</em></h1>
+    </div>
+    <span id="todo-count" class="count-badge" style="align-self:flex-end; margin-bottom:4px">0</span>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all',this)">Toutes</button>
+    <button class="filter-btn"        onclick="setFilter('active',this)">À faire</button>
+    <button class="filter-btn"        onclick="setFilter('done',this)">Terminées</button>
+    <button class="filter-btn"        onclick="setFilter('haute',this)">🔴 Haute</button>
+    <button class="filter-btn"        onclick="setFilter('moyenne',this)">🟡 Moyenne</button>
+    <button class="filter-btn"        onclick="setFilter('basse',this)">🟢 Basse</button>
+  </div>
+
+  <div id="todo-list"></div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 2 : FORMULAIRE NOUVELLE TÂCHE
+════════════════════════════════════════ -->
+<div id="screen-add-todo" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2>Nouvelle tâche</h2>
+  </div>
+
+  <div class="form-stack">
+    <div class="form-group">
+      <label class="form-label" for="todo-input">Tâche</label>
+      <input id="todo-input" class="input-field" type="text"
+             placeholder="Que faut-il faire ?"
+             onkeydown="if(event.key==='Enter') addTodo()"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="todo-priority">Priorité</label>
+      <select id="todo-priority" class="input-field">
+        <option value="haute">🔴 Haute</option>
+        <option value="moyenne" selected>🟡 Moyenne</option>
+        <option value="basse">🟢 Basse</option>
+      </select>
+    </div>
+
+    <button class="btn btn-full" style="margin-top:6px" onclick="addTodo()">Ajouter la tâche</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 3 : LISTE CITATIONS & MOTS
+════════════════════════════════════════ -->
+<div id="screen-entries" class="screen">
+  <div class="page-header">
+    <div style="flex:1">
+      <p class="eyebrow">Collection</p>
+      <h1>Citations &amp; <em>Mots</em></h1>
+    </div>
+    <span id="entry-count" class="count-badge" style="align-self:flex-end; margin-bottom:4px">0</span>
+  </div>
+
+  <div class="search-bar">
+    <span class="search-icon">⌕</span>
+    <input class="input-field" type="text" placeholder="Rechercher…"
+           oninput="renderEntries(this.value)"/>
+  </div>
+
+  <div id="entry-list"></div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN 4 : FORMULAIRE NOUVELLE ENTRÉE
+════════════════════════════════════════ -->
+<div id="screen-add-entry" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2>Nouvelle entrée</h2>
+  </div>
+
+  <div class="form-stack">
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-toggle">
+        <button class="type-btn active" id="type-citation" onclick="setEntryType('citation',this)">✦ Citation</button>
+        <button class="type-btn"        id="type-mot"      onclick="setEntryType('mot',this)">◈ Mot à retenir</button>
+      </div>
+    </div>
+
+    <!-- Citation fields -->
+    <div id="fields-citation" class="form-stack">
+      <div class="form-group">
+        <label class="form-label">Citation</label>
+        <textarea id="entry-text" class="input-field" placeholder="Entrez la citation…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted);">(facultatif)</span></label>
+        <input id="entry-author" class="input-field" type="text" placeholder="Nom de l'auteur…"/>
+      </div>
+    </div>
+
+    <!-- Mot fields -->
+    <div id="fields-mot" class="form-stack" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Mot ou concept</label>
+        <input id="entry-mot" class="input-field" type="text" placeholder="Ex : sérendipité"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Définition</label>
+        <textarea id="entry-definition" class="input-field" placeholder="Entrez la définition ou explication…"></textarea>
+      </div>
+    </div>
+
+    <button class="btn btn-full" style="margin-top:6px" onclick="addEntry()">Enregistrer</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     BOTTOM NAV
+════════════════════════════════════════ -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-todos" onclick="navigate('todos')">
+    <span class="nav-icon">✓</span>
+    Tâches
+  </button>
+  <button class="fab" id="fab-btn" onclick="openAdd()" title="Ajouter">＋</button>
+  <button class="nav-btn" id="nav-entries" onclick="navigate('entries')">
+    <span class="nav-icon">✦</span>
+    Citations
+  </button>
+</nav>
+
+
+<script>
+  // ── State ────────────────────────────────────
+  let todos     = JSON.parse(localStorage.getItem('todos')   || '[]');
+  let entries   = JSON.parse(localStorage.getItem('entries') || '[]');
+  let todoFilter = 'all';
+  let entryType  = 'citation';
+  let currentSection = 'todos'; // 'todos' or 'entries'
+  let history    = [];           // screen navigation stack
+
+  function save() {
+    localStorage.setItem('todos',   JSON.stringify(todos));
+    localStorage.setItem('entries', JSON.stringify(entries));
+  }
+
+  // ── Navigation ───────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+  }
+
+  function navigate(section) {
+    currentSection = section;
+    history = [];
+    showScreen(section);
+    // update nav highlight
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + section).classList.add('active');
+    // reset fab label
+    document.getElementById('fab-btn').textContent = '＋';
+  }
+
+  function openAdd() {
+    history.push(currentSection);
+    if (currentSection === 'todos') {
+      showScreen('add-todo');
+      setTimeout(() => document.getElementById('todo-input').focus(), 100);
+    } else {
+      showScreen('add-entry');
+    }
+  }
+
+  function goBack() {
+    const prev = history.pop() || currentSection;
+    showScreen(prev);
+  }
+
+  // ── TODO ─────────────────────────────────────
+  function addTodo() {
+    const text = document.getElementById('todo-input').value.trim();
+    if (!text) { document.getElementById('todo-input').focus(); return; }
+    todos.unshift({
+      id:       Date.now(),
+      text,
+      priority: document.getElementById('todo-priority').value,
+      done:     false,
+      date:     new Date().toLocaleDateString('fr-FR')
+    });
+    save();
+    document.getElementById('todo-input').value = '';
+    document.getElementById('todo-priority').value = 'moyenne';
+    renderTodos();
+    goBack();
+  }
+
+  function toggleTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); renderTodos(); }
+  }
+
+  function deleteTodo(id) {
+    todos = todos.filter(t => t.id !== id);
+    save(); renderTodos();
+  }
+
+  function setFilter(f, btn) {
+    todoFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTodos();
+  }
+
+  function renderTodos() {
+    let visible = todos;
+    if (todoFilter === 'active') visible = todos.filter(t => !t.done);
+    if (todoFilter === 'done')   visible = todos.filter(t =>  t.done);
+    if (['haute','moyenne','basse'].includes(todoFilter))
+      visible = todos.filter(t => t.priority === todoFilter);
+
+    document.getElementById('todo-count').textContent =
+      visible.length + ' tâche' + (visible.length !== 1 ? 's' : '');
+
+    const list = document.getElementById('todo-list');
+    if (!visible.length) {
+      const msg = todoFilter === 'all'
+        ? 'Appuyez sur <strong>＋</strong> pour ajouter votre première tâche.'
+        : 'Aucune tâche dans ce filtre.';
+      list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${msg}</p></div>`;
+      return;
+    }
+
+    const label = { haute:'Haute', moyenne:'Moyenne', basse:'Basse' };
+    list.innerHTML = visible.map(t => `
+      <div class="card todo-item ${t.done ? 'done' : ''}">
+        <div class="todo-check" onclick="toggleTodo(${t.id})">${t.done ? '✓' : ''}</div>
+        <div class="todo-body">
+          <div class="todo-text">${escHtml(t.text)}</div>
+          <div class="todo-meta">
+            <span class="priority-badge priority-${t.priority}">${label[t.priority]}</span>
+            <span class="todo-date">${t.date}</span>
+          </div>
+        </div>
+        <div class="todo-actions">
+          <button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── ENTRIES ──────────────────────────────────
+  function setEntryType(type, btn) {
+    entryType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('fields-citation').style.display = type === 'citation' ? '' : 'none';
+    document.getElementById('fields-mot').style.display      = type === 'mot'      ? '' : 'none';
+  }
+
+  function addEntry() {
+    let entry;
+    if (entryType === 'citation') {
+      const text = document.getElementById('entry-text').value.trim();
+      if (!text) { document.getElementById('entry-text').focus(); return; }
+      entry = {
+        id: Date.now(), type: 'citation', text,
+        author: document.getElementById('entry-author').value.trim(),
+        date: new Date().toLocaleDateString('fr-FR')
+      };
+      document.getElementById('entry-text').value = '';
+      document.getElementById('entry-author').value = '';
+    } else {
+      const mot = document.getElementById('entry-mot').value.trim();
+      const def = document.getElementById('entry-definition').value.trim();
+      if (!mot || !def) { document.getElementById(!mot ? 'entry-mot' : 'entry-definition').focus(); return; }
+      entry = {
+        id: Date.now(), type: 'mot', mot,
+        definition: def,
+        date: new Date().toLocaleDateString('fr-FR')
+      };
+      document.getElementById('entry-mot').value = '';
+      document.getElementById('entry-definition').value = '';
+    }
+    entries.unshift(entry);
+    save();
+    renderEntries();
+    goBack();
+  }
+
+  function deleteEntry(id) {
+    entries = entries.filter(e => e.id !== id);
+    save(); renderEntries();
+  }
+
+  function renderEntries(search = '') {
+    const q = search.toLowerCase();
+    const visible = entries.filter(e =>
+      e.type === 'citation'
+        ? e.text.toLowerCase().includes(q) || (e.author||'').toLowerCase().includes(q)
+        : e.mot.toLowerCase().includes(q)  || e.definition.toLowerCase().includes(q)
+    );
+
+    document.getElementById('entry-count').textContent =
+      visible.length + ' entrée' + (visible.length !== 1 ? 's' : '');
+
+    const list = document.getElementById('entry-list');
+    if (!visible.length) {
+      const msg = !search && !entries.length
+        ? 'Appuyez sur <strong>＋</strong> pour ajouter une citation ou un mot.'
+        : 'Aucun résultat.';
+      list.innerHTML = `<div class="empty-state"><div class="icon">✦</div><p>${msg}</p></div>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(e => {
+      if (e.type === 'citation') return `
+        <div class="card">
+          <span class="entry-type-label type-citation">✦ Citation</span>
+          <div class="entry-title entry-citation">"${escHtml(e.text)}"</div>
+          ${e.author ? `<div class="entry-sub">— ${escHtml(e.author)}</div>` : ''}
+          <div class="entry-footer">
+            <span class="entry-date">${e.date}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
+          </div>
+        </div>`;
+      return `
+        <div class="card">
+          <span class="entry-type-label type-mot">◈ Mot</span>
+          <div class="entry-title">${escHtml(e.mot)}</div>
+          <div class="entry-def">${escHtml(e.definition)}</div>
+          <div class="entry-footer">
+            <span class="entry-date">${e.date}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Utils ────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Init ─────────────────────────────────────
+  renderTodos();
+  renderEntries();
+</script>
+</body>
+</html>
+ 
