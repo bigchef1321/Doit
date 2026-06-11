@@ -377,7 +377,10 @@
       <p class="eyebrow">To-Do</p>
       <h1>Mes <em>tâches</em></h1>
     </div>
-    <span id="todo-count" class="count-badge" style="align-self:flex-end; margin-bottom:4px">0</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;align-self:flex-end;margin-bottom:4px">
+      <span id="todo-count" class="count-badge">0</span>
+      <span id="save-status" style="font-size:0.68rem;color:var(--success);min-height:1em"></span>
+    </div>
   </div>
 
   <div class="filter-bar">
@@ -510,20 +513,29 @@
 
 
 <script>
-  // ── State ────────────────────────────────────
-  let todos     = JSON.parse(localStorage.getItem('todos')   || '[]');
-  let entries   = JSON.parse(localStorage.getItem('entries') || '[]');
-  let todoFilter = 'all';
-  let entryType  = 'citation';
-  let currentSection = 'todos'; // 'todos' or 'entries'
-  let history    = [];           // screen navigation stack
+  // ── State ─────────────────────────────────────────
+  let todos          = JSON.parse(localStorage.getItem('todos')   || '[]');
+  let entries        = JSON.parse(localStorage.getItem('entries') || '[]');
+  let todoFilter     = 'all';
+  let entryType      = 'citation';
+  let currentSection = 'todos';
+  let navHistory     = [];
 
+  // ── Persistance (localStorage — fonctionne sur GitHub Pages) ──
   function save() {
     localStorage.setItem('todos',   JSON.stringify(todos));
     localStorage.setItem('entries', JSON.stringify(entries));
   }
 
-  // ── Navigation ───────────────────────────────
+  function showSaved() {
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    el.textContent = '✓ Sauvegardé';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ''; }, 2000);
+  }
+
+  // ── Navigation ────────────────────────────────────
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + id).classList.add('active');
@@ -531,17 +543,14 @@
 
   function navigate(section) {
     currentSection = section;
-    history = [];
+    navHistory = [];
     showScreen(section);
-    // update nav highlight
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('nav-' + section).classList.add('active');
-    // reset fab label
-    document.getElementById('fab-btn').textContent = '＋';
   }
 
   function openAdd() {
-    history.push(currentSection);
+    navHistory.push(currentSection);
     if (currentSection === 'todos') {
       showScreen('add-todo');
       setTimeout(() => document.getElementById('todo-input').focus(), 100);
@@ -551,11 +560,11 @@
   }
 
   function goBack() {
-    const prev = history.pop() || currentSection;
+    const prev = navHistory.pop() || currentSection;
     showScreen(prev);
   }
 
-  // ── TODO ─────────────────────────────────────
+  // ── TODO ──────────────────────────────────────────
   function addTodo() {
     const text = document.getElementById('todo-input').value.trim();
     if (!text) { document.getElementById('todo-input').focus(); return; }
@@ -570,17 +579,18 @@
     document.getElementById('todo-input').value = '';
     document.getElementById('todo-priority').value = 'moyenne';
     renderTodos();
+    showSaved();
     goBack();
   }
 
   function toggleTodo(id) {
     const t = todos.find(t => t.id === id);
-    if (t) { t.done = !t.done; save(); renderTodos(); }
+    if (t) { t.done = !t.done; save(); renderTodos(); showSaved(); }
   }
 
   function deleteTodo(id) {
     todos = todos.filter(t => t.id !== id);
-    save(); renderTodos();
+    save(); renderTodos(); showSaved();
   }
 
   function setFilter(f, btn) {
@@ -626,7 +636,7 @@
       </div>`).join('');
   }
 
-  // ── ENTRIES ──────────────────────────────────
+  // ── ENTRIES ───────────────────────────────────────
   function setEntryType(type, btn) {
     entryType = type;
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -645,29 +655,29 @@
         author: document.getElementById('entry-author').value.trim(),
         date: new Date().toLocaleDateString('fr-FR')
       };
-      document.getElementById('entry-text').value = '';
+      document.getElementById('entry-text').value   = '';
       document.getElementById('entry-author').value = '';
     } else {
       const mot = document.getElementById('entry-mot').value.trim();
       const def = document.getElementById('entry-definition').value.trim();
       if (!mot || !def) { document.getElementById(!mot ? 'entry-mot' : 'entry-definition').focus(); return; }
       entry = {
-        id: Date.now(), type: 'mot', mot,
-        definition: def,
+        id: Date.now(), type: 'mot', mot, definition: def,
         date: new Date().toLocaleDateString('fr-FR')
       };
-      document.getElementById('entry-mot').value = '';
+      document.getElementById('entry-mot').value        = '';
       document.getElementById('entry-definition').value = '';
     }
     entries.unshift(entry);
     save();
     renderEntries();
+    showSaved();
     goBack();
   }
 
   function deleteEntry(id) {
     entries = entries.filter(e => e.id !== id);
-    save(); renderEntries();
+    save(); renderEntries(); showSaved();
   }
 
   function renderEntries(search = '') {
@@ -714,15 +724,14 @@
     }).join('');
   }
 
-  // ── Utils ────────────────────────────────────
+  // ── Utils ─────────────────────────────────────────
   function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Init ─────────────────────────────────────
+  // ── Init ──────────────────────────────────────────
   renderTodos();
   renderEntries();
 </script>
 </body>
 </html>
- 
