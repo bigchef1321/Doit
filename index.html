@@ -1,388 +1,298 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mon Carnet Numérique</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mon Carnet Numérique</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1A1B2E;--surface:#23253A;--surface2:#2D2F4A;--border:#3A3C58;
+  --violet:#7C6FCD;--violet-lt:#A99EE0;--gold:#D4AF6A;--cream:#F0EDE8;
+  --muted:#8A8BA8;--danger:#E07C7C;--success:#6CC68A;
+  --radius:12px;--radius-sm:7px;--shadow:0 4px 28px rgba(0,0,0,.4);--tr:.22s ease;
+}
+body{background:var(--bg);color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 50% at 20% 10%,rgba(124,111,205,.08) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 90%,rgba(212,175,106,.06) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
 
-    :root {
-      --bg:        #1A1B2E;
-      --surface:   #23253A;
-      --surface2:  #2D2F4A;
-      --border:    #3A3C58;
-      --violet:    #7C6FCD;
-      --violet-lt: #A99EE0;
-      --gold:      #D4AF6A;
-      --cream:     #F0EDE8;
-      --muted:     #8A8BA8;
-      --danger:    #E07C7C;
-      --success:   #6CC68A;
-      --radius:    12px;
-      --radius-sm: 7px;
-      --shadow:    0 4px 28px rgba(0,0,0,0.4);
-      --transition: 0.22s ease;
-    }
+/* ── SCREENS ── */
+.screen{display:none;position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 16px 110px;animation:fadeUp .28s ease both}
+.screen.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-    body {
-      background: var(--bg);
-      color: var(--cream);
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:200;
+  background:rgba(26,27,46,.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;
+  max-width:100%;
+}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--violet-lt)}
+.burger-btn{
+  background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;gap:5px;padding:4px;
+  z-index:300;
+}
+.burger-btn span{
+  display:block;width:24px;height:2px;background:var(--cream);
+  border-radius:2px;transition:all .3s ease;transform-origin:center;
+}
+.burger-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger-btn.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.burger-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
 
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,111,205,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 90%, rgba(212,175,106,0.06) 0%, transparent 60%);
-      pointer-events: none; z-index: 0;
-    }
+/* ── DRAWER MENU ── */
+.drawer-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;
+  opacity:0;pointer-events:none;transition:opacity .3s ease;
+}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.drawer{
+  position:fixed;left:0;top:0;bottom:0;width:280px;max-width:85vw;
+  background:var(--surface);border-right:1px solid var(--border);
+  z-index:260;transform:translateX(-100%);transition:transform .3s ease;
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-header{
+  padding:32px 24px 20px;
+  border-bottom:1px solid var(--border);
+}
+.drawer-header .eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.drawer-header h2{font-family:'Playfair Display',serif;font-size:1.3rem;font-style:italic;color:var(--cream)}
+.drawer-nav{padding:12px 0;flex:1}
+.drawer-item{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 24px;
+  background:none;border:none;
+  color:var(--muted);font-family:'Inter',sans-serif;font-size:.95rem;
+  cursor:pointer;width:100%;text-align:left;
+  transition:background var(--tr),color var(--tr);
+  position:relative;
+}
+.drawer-item .di-icon{font-size:1.2rem;width:26px;text-align:center}
+.drawer-item::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--violet);border-radius:0 3px 3px 0;
+  opacity:0;transition:opacity var(--tr);
+}
+.drawer-item:hover{background:var(--surface2);color:var(--cream)}
+.drawer-item.active{color:var(--cream);background:rgba(124,111,205,.12)}
+.drawer-item.active::before{opacity:1}
+.drawer-sep{height:1px;background:var(--border);margin:8px 20px}
 
-    /* ══════════════════════════════
-       SCREEN SYSTEM
-    ══════════════════════════════ */
-    .screen {
-      display: none;
-      position: relative;
-      z-index: 1;
-      max-width: 780px;
-      margin: 0 auto;
-      padding: 0 16px 100px;
-      animation: fadeUp 0.28s ease both;
-    }
-    .screen.active { display: block; }
+/* ── PAGE HEADER ── */
+.page-header{padding:24px 0 16px;display:flex;align-items:flex-end;justify-content:space-between}
+.page-header h1{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,5vw,2.2rem);font-weight:700;line-height:1.15}
+.page-header h1 em{font-style:italic;color:var(--violet-lt)}
+.page-header h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;flex:1}
+.back-btn{
+  background:var(--surface);border:1px solid var(--border);border-radius:50%;
+  color:var(--muted);cursor:pointer;width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;
+  transition:all var(--tr);margin-right:12px;
+}
+.back-btn:hover{border-color:var(--violet);color:var(--cream)}
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+/* ── CARDS & FORMS ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px 20px;margin-bottom:12px;
+  transition:box-shadow var(--tr);
+}
+.card:hover{box-shadow:var(--shadow)}
+.form-stack{display:flex;flex-direction:column;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:.75rem;font-weight:600;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
+.input-field{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--cream);
+  font-family:'Inter',sans-serif;font-size:.92rem;padding:12px 15px;outline:none;
+  transition:border-color var(--tr);
+}
+.input-field::placeholder{color:var(--muted)}
+.input-field:focus{border-color:var(--violet)}
+select.input-field{cursor:pointer}
+textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
 
-    /* ══════════════════════════════
-       HEADER
-    ══════════════════════════════ */
-    .page-header {
-      padding: 36px 0 20px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .page-header.centered { justify-content: center; flex-direction: column; text-align: center; padding: 40px 0 28px; }
-    .eyebrow {
-      font-size: 11px; letter-spacing: 3px;
-      text-transform: uppercase; color: var(--gold);
-      margin-bottom: 8px;
-    }
-    .page-header h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.7rem, 5vw, 2.4rem);
-      font-weight: 700; line-height: 1.15;
-    }
-    .page-header h1 em { font-style: italic; color: var(--violet-lt); }
-    .page-header h2 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.4rem; font-weight: 700;
-      flex: 1;
-    }
+/* ── BUTTONS ── */
+.btn{
+  background:var(--violet);border:none;border-radius:var(--radius-sm);
+  color:#fff;cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:.9rem;font-weight:600;padding:12px 24px;
+  transition:background var(--tr),transform .1s;white-space:nowrap;
+}
+.btn:hover{background:var(--violet-lt)}
+.btn:active{transform:scale(.97)}
+.btn-full{width:100%}
+.btn-sm{padding:6px 12px;font-size:.76rem;border-radius:6px}
+.btn-danger{background:var(--danger)}
+.btn-danger:hover{background:#f09090}
+.btn-edit{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.btn-edit:hover{background:var(--surface);border-color:var(--violet);color:var(--cream)}
+.btn-success{background:var(--success)}
+.btn-success:hover{background:#80d49a}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 
-    /* back button */
-    .back-btn {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      color: var(--muted);
-      cursor: pointer;
-      width: 40px; height: 40px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-      transition: all var(--transition);
-    }
-    .back-btn:hover { border-color: var(--violet); color: var(--cream); }
+/* ── FAB ── */
+.fab{
+  position:fixed;right:20px;bottom:24px;
+  width:58px;height:58px;background:var(--violet);border:none;border-radius:50%;
+  color:#fff;font-size:1.8rem;cursor:pointer;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(124,111,205,.55);
+  transition:background var(--tr),transform .15s,box-shadow var(--tr);
+}
+.fab:hover{background:var(--violet-lt);box-shadow:0 6px 28px rgba(124,111,205,.65)}
+.fab:active{transform:scale(.92)}
+.fab.hidden{display:none}
 
-    /* ══════════════════════════════
-       BOTTOM NAV
-    ══════════════════════════════ */
-    .bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-around;
-      padding: 10px 20px 14px;
-      z-index: 100;
-      backdrop-filter: blur(12px);
-    }
-    .nav-btn {
-      background: none; border: none;
-      color: var(--muted);
-      cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.68rem; font-weight: 500;
-      padding: 6px 18px;
-      border-radius: 10px;
-      transition: all var(--transition);
-    }
-    .nav-btn .nav-icon { font-size: 1.3rem; }
-    .nav-btn.active { color: var(--violet); }
-    .nav-btn.active .nav-icon { filter: drop-shadow(0 0 6px rgba(124,111,205,0.5)); }
+/* ── BADGES & META ── */
+.count-badge{font-size:.75rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+.priority-badge{font-size:.68rem;font-weight:600;letter-spacing:.4px;border-radius:4px;padding:2px 7px}
+.priority-haute{background:rgba(224,124,124,.18);color:var(--danger)}
+.priority-moyenne{background:rgba(212,175,106,.18);color:var(--gold)}
+.priority-basse{background:rgba(108,198,138,.18);color:var(--success)}
+.tag{font-size:.68rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted)}
+.meta-row{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.save-status{font-size:.7rem;color:var(--success);min-height:1rem}
 
-    /* ── FAB (floating + button) ── */
-    .fab {
-      width: 56px; height: 56px;
-      background: var(--violet);
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      cursor: pointer;
-      font-size: 1.7rem; line-height: 1;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 20px rgba(124,111,205,0.5);
-      transition: background var(--transition), transform 0.15s, box-shadow var(--transition);
-      flex-shrink: 0;
-      margin-bottom: 4px;
-    }
-    .fab:hover  { background: var(--violet-lt); box-shadow: 0 6px 28px rgba(124,111,205,0.6); }
-    .fab:active { transform: scale(0.93); }
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.filter-btn{
+  background:transparent;border:1px solid var(--border);border-radius:20px;
+  color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:.76rem;padding:5px 13px;transition:all var(--tr);
+}
+.filter-btn:hover,.filter-btn.active{background:var(--surface2);border-color:var(--violet);color:var(--cream)}
 
-    /* ══════════════════════════════
-       SHARED COMPONENTS
-    ══════════════════════════════ */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      margin-bottom: 12px;
-      transition: box-shadow var(--transition);
-    }
-    .card:hover { box-shadow: var(--shadow); }
+/* ── TODO SPECIFIC ── */
+.todo-item{display:flex;align-items:flex-start;gap:14px}
+.todo-check{
+  flex-shrink:0;width:23px;height:23px;border:2px solid var(--border);
+  border-radius:6px;background:var(--surface2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:2px;font-size:13px;color:transparent;transition:all var(--tr);
+}
+.todo-item.done .todo-check{background:var(--success);border-color:var(--success);color:#fff}
+.todo-item.done .todo-text{text-decoration:line-through;color:var(--muted)}
+.todo-body{flex:1;min-width:0}
+.todo-text{font-size:.95rem;line-height:1.5}
 
-    .input-field {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--cream);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.92rem;
-      padding: 12px 15px;
-      outline: none;
-      transition: border-color var(--transition);
-    }
-    .input-field::placeholder { color: var(--muted); }
-    .input-field:focus { border-color: var(--violet); }
-    select.input-field { cursor: pointer; }
-    textarea.input-field { min-height: 100px; resize: vertical; line-height: 1.6; }
+/* ── ENTRIES ── */
+.type-toggle{display:flex;gap:8px}
+.type-btn{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:.85rem;padding:10px;transition:all var(--tr);
+}
+.type-btn.active{background:rgba(124,111,205,.2);border-color:var(--violet);color:var(--violet-lt)}
+.entry-type-label{font-size:.66rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.type-citation{background:rgba(212,175,106,.15);color:var(--gold)}
+.type-mot{background:rgba(124,111,205,.15);color:var(--violet-lt)}
+.entry-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;line-height:1.35;margin-bottom:6px}
+.entry-citation{font-style:italic}
+.entry-sub{font-size:.83rem;color:var(--gold);margin-bottom:8px}
+.entry-def{font-size:.9rem;line-height:1.7;color:#cac8e4}
 
-    .btn {
-      background: var(--violet);
-      border: none;
-      border-radius: var(--radius-sm);
-      color: #fff;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.9rem; font-weight: 600;
-      padding: 12px 24px;
-      transition: background var(--transition), transform 0.1s;
-      white-space: nowrap;
-    }
-    .btn:hover  { background: var(--violet-lt); }
-    .btn:active { transform: scale(0.97); }
-    .btn-full   { width: 100%; }
-    .btn-sm     { padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; }
-    .btn-danger { background: var(--danger); }
-    .btn-danger:hover { background: #f09090; }
+/* ── MEDIA CARDS (livres/musique/cinéma) ── */
+.media-card-inner{display:flex;gap:16px;align-items:flex-start}
+.media-cover{
+  width:56px;height:72px;border-radius:6px;flex-shrink:0;
+  background:var(--surface2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+}
+.media-cover.cinema{height:64px;width:64px;border-radius:50%}
+.media-cover.musique{height:64px;width:64px;border-radius:50%}
+.media-info{flex:1;min-width:0}
+.media-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:2px}
+.media-sub{font-size:.82rem;color:var(--gold);margin-bottom:6px}
+.media-note{font-size:.85rem;line-height:1.6;color:#cac8e4}
+.stars{color:var(--gold);font-size:1rem;letter-spacing:1px;margin-top:4px}
+.status-badge{font-size:.68rem;font-weight:600;border-radius:4px;padding:2px 7px}
+.status-lu{background:rgba(108,198,138,.18);color:var(--success)}
+.status-en-cours{background:rgba(212,175,106,.18);color:var(--gold)}
+.status-a-faire{background:rgba(138,139,168,.18);color:var(--muted)}
 
-    .count-badge {
-      font-size: 0.78rem; color: var(--muted);
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 3px 10px;
-    }
-    .section-head {
-      display: flex; align-items: center;
-      justify-content: space-between;
-      margin-bottom: 18px;
-    }
+/* ── SEARCH ── */
+.search-wrap{position:relative;margin-bottom:18px}
+.search-wrap .input-field{padding-left:38px}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
 
-    .empty-state {
-      text-align: center;
-      padding: 56px 20px;
-      color: var(--muted);
-    }
-    .empty-state .icon { font-size: 2.6rem; margin-bottom: 14px; opacity: 0.55; }
-    .empty-state p { font-size: 0.9rem; line-height: 1.7; }
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:56px 20px;color:var(--muted)}
+.empty-state .icon{font-size:2.6rem;margin-bottom:14px;opacity:.55}
+.empty-state p{font-size:.9rem;line-height:1.7}
 
-    /* ══════════════════════════════
-       SCREEN 1 — TODO LIST
-    ══════════════════════════════ */
-    .filter-bar {
-      display: flex; gap: 6px;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
-    }
-    .filter-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      color: var(--muted);
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.78rem;
-      padding: 5px 13px;
-      transition: all var(--transition);
-    }
-    .filter-btn:hover, .filter-btn.active {
-      background: var(--surface2);
-      border-color: var(--violet);
-      color: var(--cream);
-    }
+/* ── MODAL EDIT ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px 16px 0 0;padding:24px 20px 36px;
+  width:100%;max-width:780px;
+  transform:translateY(30px);transition:transform .28s ease;
+  max-height:85vh;overflow-y:auto;
+}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h3{font-family:'Playfair Display',serif;font-size:1.1rem}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.3rem;padding:4px}
+.modal-close:hover{color:var(--cream)}
 
-    .todo-item {
-      display: flex; align-items: flex-start; gap: 14px;
-    }
-    .todo-check {
-      flex-shrink: 0;
-      width: 23px; height: 23px;
-      border: 2px solid var(--border);
-      border-radius: 6px;
-      background: var(--surface2);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 1px;
-      font-size: 13px; color: transparent;
-      transition: all var(--transition);
-    }
-    .todo-item.done .todo-check {
-      background: var(--success);
-      border-color: var(--success);
-      color: #fff;
-    }
-    .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
-    .todo-body { flex: 1; }
-    .todo-text  { font-size: 0.95rem; line-height: 1.5; }
-    .todo-meta  {
-      display: flex; gap: 8px; align-items: center;
-      margin-top: 6px; flex-wrap: wrap;
-    }
-    .priority-badge {
-      font-size: 0.68rem; font-weight: 600;
-      letter-spacing: 0.4px;
-      border-radius: 4px;
-      padding: 2px 7px;
-    }
-    .priority-haute   { background: rgba(224,124,124,0.18); color: var(--danger); }
-    .priority-moyenne { background: rgba(212,175,106,0.18); color: var(--gold); }
-    .priority-basse   { background: rgba(108,198,138,0.18); color: var(--success); }
-    .todo-date  { font-size: 0.72rem; color: var(--muted); }
-    .todo-actions { flex-shrink: 0; }
-
-    /* ══════════════════════════════
-       SCREEN 2 — ADD TODO (form)
-    ══════════════════════════════ */
-    .form-stack { display: flex; flex-direction: column; gap: 14px; }
-    .form-label {
-      display: block;
-      font-size: 0.78rem; font-weight: 600;
-      letter-spacing: 0.5px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-    }
-    .form-group { display: flex; flex-direction: column; }
-
-    /* ══════════════════════════════
-       SCREEN 3 — ENTRIES LIST
-    ══════════════════════════════ */
-    .search-bar { position: relative; margin-bottom: 18px; }
-    .search-bar .input-field { padding-left: 38px; }
-    .search-icon {
-      position: absolute; left: 12px; top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted); font-size: 14px;
-      pointer-events: none;
-    }
-
-    .entry-type-label {
-      font-size: 0.67rem; font-weight: 600;
-      letter-spacing: 1.5px; text-transform: uppercase;
-      padding: 2px 8px; border-radius: 4px;
-      display: inline-block; margin-bottom: 10px;
-    }
-    .type-citation { background: rgba(212,175,106,0.15); color: var(--gold); }
-    .type-mot      { background: rgba(124,111,205,0.15); color: var(--violet-lt); }
-
-    .entry-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.1rem; font-weight: 700;
-      line-height: 1.35; margin-bottom: 8px;
-    }
-    .entry-citation { font-style: italic; }
-    .entry-sub  { font-size: 0.83rem; color: var(--gold); margin-bottom: 10px; }
-    .entry-def  { font-size: 0.9rem; line-height: 1.7; color: #cac8e4; }
-    .entry-footer {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-top: 14px; padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
-    .entry-date { font-size: 0.72rem; color: var(--muted); }
-
-    /* ══════════════════════════════
-       SCREEN 4 — ADD ENTRY (form)
-    ══════════════════════════════ */
-    .type-toggle {
-      display: flex; gap: 8px;
-    }
-    .type-btn {
-      flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--muted);
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem; padding: 10px;
-      transition: all var(--transition);
-    }
-    .type-btn.active {
-      background: rgba(124,111,205,0.2);
-      border-color: var(--violet);
-      color: var(--violet-lt);
-    }
-
-    /* scrollbar */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    @media (max-width: 480px) {
-      .fab { width: 50px; height: 50px; font-size: 1.5rem; }
-    }
-  </style>
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════
-     SCREEN 1 : LISTE DES TÂCHES
-════════════════════════════════════════ -->
+<!-- ══════ TOP BAR ══════ -->
+<div class="topbar" id="topbar">
+  <button class="burger-btn" id="burger" onclick="toggleDrawer()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="topbar-title" id="topbar-title">Mes Tâches</span>
+  <span id="save-status" class="save-status"></span>
+</div>
+
+<!-- ══════ DRAWER ══════ -->
+<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
+<nav class="drawer" id="drawer">
+  <div class="drawer-header">
+    <p class="eyebrow">Navigation</p>
+    <h2>Mon Carnet</h2>
+  </div>
+  <div class="drawer-nav">
+    <button class="drawer-item active" id="nav-todos"   onclick="navigate('todos')">   <span class="di-icon">✓</span> Tâches</button>
+    <button class="drawer-item"        id="nav-entries" onclick="navigate('entries')"> <span class="di-icon">✦</span> Citations & Mots</button>
+    <div class="drawer-sep"></div>
+    <button class="drawer-item"        id="nav-livres"  onclick="navigate('livres')">  <span class="di-icon">📚</span> Livres</button>
+    <button class="drawer-item"        id="nav-musique" onclick="navigate('musique')"> <span class="di-icon">🎵</span> Musique</button>
+    <button class="drawer-item"        id="nav-cinema"  onclick="navigate('cinema')">  <span class="di-icon">🎬</span> Cinéma</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════
+     SCREEN : LISTE TÂCHES
+══════════════════════════════════ -->
 <div id="screen-todos" class="screen active">
   <div class="page-header">
-    <div style="flex:1">
-      <p class="eyebrow">To-Do</p>
+    <div>
       <h1>Mes <em>tâches</em></h1>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;align-self:flex-end;margin-bottom:4px">
-      <span id="todo-count" class="count-badge">0</span>
-      <span id="save-status" style="font-size:0.68rem;color:var(--success);min-height:1em"></span>
-    </div>
+    <span id="todo-count" class="count-badge">0</span>
   </div>
-
   <div class="filter-bar">
     <button class="filter-btn active" onclick="setFilter('all',this)">Toutes</button>
     <button class="filter-btn"        onclick="setFilter('active',this)">À faire</button>
@@ -391,74 +301,61 @@
     <button class="filter-btn"        onclick="setFilter('moyenne',this)">🟡 Moyenne</button>
     <button class="filter-btn"        onclick="setFilter('basse',this)">🟢 Basse</button>
   </div>
-
   <div id="todo-list"></div>
 </div>
 
-
-<!-- ════════════════════════════════════════
-     SCREEN 2 : FORMULAIRE NOUVELLE TÂCHE
-════════════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     SCREEN : FORMULAIRE TÂCHE
+══════════════════════════════════ -->
 <div id="screen-add-todo" class="screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2>Nouvelle tâche</h2>
+    <h2 id="todo-form-title">Nouvelle tâche</h2>
   </div>
-
   <div class="form-stack">
+    <input type="hidden" id="todo-edit-id"/>
     <div class="form-group">
-      <label class="form-label" for="todo-input">Tâche</label>
-      <input id="todo-input" class="input-field" type="text"
-             placeholder="Que faut-il faire ?"
-             onkeydown="if(event.key==='Enter') addTodo()"/>
+      <label class="form-label">Tâche</label>
+      <input id="todo-input" class="input-field" type="text" placeholder="Que faut-il faire ?"
+             onkeydown="if(event.key==='Enter') saveTodo()"/>
     </div>
-
     <div class="form-group">
-      <label class="form-label" for="todo-priority">Priorité</label>
+      <label class="form-label">Priorité</label>
       <select id="todo-priority" class="input-field">
         <option value="haute">🔴 Haute</option>
         <option value="moyenne" selected>🟡 Moyenne</option>
         <option value="basse">🟢 Basse</option>
       </select>
     </div>
-
-    <button class="btn btn-full" style="margin-top:6px" onclick="addTodo()">Ajouter la tâche</button>
+    <button class="btn btn-full" onclick="saveTodo()">Enregistrer</button>
   </div>
 </div>
 
-
-<!-- ════════════════════════════════════════
-     SCREEN 3 : LISTE CITATIONS & MOTS
-════════════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     SCREEN : LISTE CITATIONS
+══════════════════════════════════ -->
 <div id="screen-entries" class="screen">
   <div class="page-header">
-    <div style="flex:1">
-      <p class="eyebrow">Collection</p>
-      <h1>Citations &amp; <em>Mots</em></h1>
-    </div>
-    <span id="entry-count" class="count-badge" style="align-self:flex-end; margin-bottom:4px">0</span>
+    <h1>Citations &amp; <em>Mots</em></h1>
+    <span id="entry-count" class="count-badge">0</span>
   </div>
-
-  <div class="search-bar">
+  <div class="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="input-field" type="text" placeholder="Rechercher…"
-           oninput="renderEntries(this.value)"/>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderEntries(this.value)"/>
   </div>
-
   <div id="entry-list"></div>
 </div>
 
-
-<!-- ════════════════════════════════════════
-     SCREEN 4 : FORMULAIRE NOUVELLE ENTRÉE
-════════════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     SCREEN : FORMULAIRE CITATION
+══════════════════════════════════ -->
 <div id="screen-add-entry" class="screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2>Nouvelle entrée</h2>
+    <h2 id="entry-form-title">Nouvelle entrée</h2>
   </div>
-
   <div class="form-stack">
+    <input type="hidden" id="entry-edit-id"/>
     <div class="form-group">
       <label class="form-label">Type</label>
       <div class="type-toggle">
@@ -466,20 +363,16 @@
         <button class="type-btn"        id="type-mot"      onclick="setEntryType('mot',this)">◈ Mot à retenir</button>
       </div>
     </div>
-
-    <!-- Citation fields -->
     <div id="fields-citation" class="form-stack">
       <div class="form-group">
         <label class="form-label">Citation</label>
         <textarea id="entry-text" class="input-field" placeholder="Entrez la citation…"></textarea>
       </div>
       <div class="form-group">
-        <label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted);">(facultatif)</span></label>
+        <label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
         <input id="entry-author" class="input-field" type="text" placeholder="Nom de l'auteur…"/>
       </div>
     </div>
-
-    <!-- Mot fields -->
     <div id="fields-mot" class="form-stack" style="display:none">
       <div class="form-group">
         <label class="form-label">Mot ou concept</label>
@@ -487,251 +380,627 @@
       </div>
       <div class="form-group">
         <label class="form-label">Définition</label>
-        <textarea id="entry-definition" class="input-field" placeholder="Entrez la définition ou explication…"></textarea>
+        <textarea id="entry-definition" class="input-field" placeholder="Entrez la définition…"></textarea>
       </div>
     </div>
-
-    <button class="btn btn-full" style="margin-top:6px" onclick="addEntry()">Enregistrer</button>
+    <button class="btn btn-full" onclick="saveEntry()">Enregistrer</button>
   </div>
 </div>
 
+<!-- ══════════════════════════════════
+     SCREEN : LIVRES
+══════════════════════════════════ -->
+<div id="screen-livres" class="screen">
+  <div class="page-header">
+    <h1>Mes <em>Livres</em></h1>
+    <span id="livres-count" class="count-badge">0</span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('livres',this.value)"/>
+  </div>
+  <div id="livres-list"></div>
+</div>
 
-<!-- ════════════════════════════════════════
-     BOTTOM NAV
-════════════════════════════════════════ -->
-<nav class="bottom-nav">
-  <button class="nav-btn active" id="nav-todos" onclick="navigate('todos')">
-    <span class="nav-icon">✓</span>
-    Tâches
-  </button>
-  <button class="fab" id="fab-btn" onclick="openAdd()" title="Ajouter">＋</button>
-  <button class="nav-btn" id="nav-entries" onclick="navigate('entries')">
-    <span class="nav-icon">✦</span>
-    Citations
-  </button>
-</nav>
+<!-- ══════════════════════════════════
+     SCREEN : FORMULAIRE LIVRE
+══════════════════════════════════ -->
+<div id="screen-add-livres" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2 id="livres-form-title">Nouveau livre</h2>
+  </div>
+  <div class="form-stack">
+    <input type="hidden" id="livres-edit-id"/>
+    <div class="form-group"><label class="form-label">Titre</label>
+      <input id="livres-titre" class="input-field" type="text" placeholder="Titre du livre"/></div>
+    <div class="form-group"><label class="form-label">Auteur</label>
+      <input id="livres-auteur" class="input-field" type="text" placeholder="Nom de l'auteur"/></div>
+    <div class="form-group"><label class="form-label">Statut</label>
+      <select id="livres-statut" class="input-field">
+        <option value="a-faire">📖 À lire</option>
+        <option value="en-cours">⏳ En cours</option>
+        <option value="lu">✅ Lu</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">Note / avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <textarea id="livres-note" class="input-field" placeholder="Votre avis…"></textarea></div>
+    <div class="form-group"><label class="form-label">Étoiles</label>
+      <div id="livres-stars-picker" class="stars-picker"></div>
+      <input type="hidden" id="livres-stars" value="0"/></div>
+    <button class="btn btn-full" onclick="saveMedia('livres')">Enregistrer</button>
+  </div>
+</div>
 
+<!-- ══════════════════════════════════
+     SCREEN : MUSIQUE
+══════════════════════════════════ -->
+<div id="screen-musique" class="screen">
+  <div class="page-header">
+    <h1>Ma <em>Musique</em></h1>
+    <span id="musique-count" class="count-badge">0</span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('musique',this.value)"/>
+  </div>
+  <div id="musique-list"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN : FORMULAIRE MUSIQUE
+══════════════════════════════════ -->
+<div id="screen-add-musique" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2 id="musique-form-title">Nouvel album / titre</h2>
+  </div>
+  <div class="form-stack">
+    <input type="hidden" id="musique-edit-id"/>
+    <div class="form-group"><label class="form-label">Titre / Album</label>
+      <input id="musique-titre" class="input-field" type="text" placeholder="Nom de l'album ou du titre"/></div>
+    <div class="form-group"><label class="form-label">Artiste</label>
+      <input id="musique-arteur" class="input-field" type="text" placeholder="Nom de l'artiste"/></div>
+    <div class="form-group"><label class="form-label">Genre <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <input id="musique-genre" class="input-field" type="text" placeholder="Jazz, Rock, Classique…"/></div>
+    <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <textarea id="musique-note" class="input-field" placeholder="Ce que vous en pensez…"></textarea></div>
+    <div class="form-group"><label class="form-label">Étoiles</label>
+      <div id="musique-stars-picker" class="stars-picker"></div>
+      <input type="hidden" id="musique-stars" value="0"/></div>
+    <button class="btn btn-full" onclick="saveMedia('musique')">Enregistrer</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN : CINÉMA
+══════════════════════════════════ -->
+<div id="screen-cinema" class="screen">
+  <div class="page-header">
+    <h1>Mon <em>Cinéma</em></h1>
+    <span id="cinema-count" class="count-badge">0</span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('cinema',this.value)"/>
+  </div>
+  <div id="cinema-list"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN : FORMULAIRE CINÉMA
+══════════════════════════════════ -->
+<div id="screen-add-cinema" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2 id="cinema-form-title">Nouveau film / série</h2>
+  </div>
+  <div class="form-stack">
+    <input type="hidden" id="cinema-edit-id"/>
+    <div class="form-group"><label class="form-label">Titre</label>
+      <input id="cinema-titre" class="input-field" type="text" placeholder="Titre du film ou de la série"/></div>
+    <div class="form-group"><label class="form-label">Réalisateur / Créateur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <input id="cinema-real" class="input-field" type="text" placeholder="Nom du réalisateur"/></div>
+    <div class="form-group"><label class="form-label">Type</label>
+      <select id="cinema-type" class="input-field">
+        <option value="Film">🎬 Film</option>
+        <option value="Série">📺 Série</option>
+        <option value="Documentaire">🎥 Documentaire</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">Statut</label>
+      <select id="cinema-statut" class="input-field">
+        <option value="a-faire">🍿 À voir</option>
+        <option value="en-cours">⏳ En cours</option>
+        <option value="lu">✅ Vu</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <textarea id="cinema-note" class="input-field" placeholder="Votre avis…"></textarea></div>
+    <div class="form-group"><label class="form-label">Étoiles</label>
+      <div id="cinema-stars-picker" class="stars-picker"></div>
+      <input type="hidden" id="cinema-stars" value="0"/></div>
+    <button class="btn btn-full" onclick="saveMedia('cinema')">Enregistrer</button>
+  </div>
+</div>
+
+<!-- ══════ FAB ══════ -->
+<button class="fab" id="fab" onclick="openAdd()" title="Ajouter">＋</button>
+
+<!-- ══════ MODAL ÉDITION TÂCHE ══════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Modifier la tâche</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-stack">
+      <input type="hidden" id="modal-todo-id"/>
+      <div class="form-group"><label class="form-label">Tâche</label>
+        <input id="modal-todo-text" class="input-field" type="text"/></div>
+      <div class="form-group"><label class="form-label">Priorité</label>
+        <select id="modal-todo-priority" class="input-field">
+          <option value="haute">🔴 Haute</option>
+          <option value="moyenne">🟡 Moyenne</option>
+          <option value="basse">🟢 Basse</option>
+        </select></div>
+      <button class="btn btn-full btn-success" onclick="applyTodoEdit()">✓ Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.stars-picker{display:flex;gap:6px}
+.stars-picker span{font-size:1.5rem;cursor:pointer;color:var(--border);transition:color .15s}
+.stars-picker span.on{color:var(--gold)}
+</style>
 
 <script>
-  // ── State ─────────────────────────────────────────
-  let todos          = JSON.parse(localStorage.getItem('todos')   || '[]');
-  let entries        = JSON.parse(localStorage.getItem('entries') || '[]');
-  let todoFilter     = 'all';
-  let entryType      = 'citation';
-  let currentSection = 'todos';
-  let navHistory     = [];
+// ══════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════
+let todos   = JSON.parse(localStorage.getItem('todos')   || '[]');
+let entries = JSON.parse(localStorage.getItem('entries') || '[]');
+let livres  = JSON.parse(localStorage.getItem('livres')  || '[]');
+let musique = JSON.parse(localStorage.getItem('musique') || '[]');
+let cinema  = JSON.parse(localStorage.getItem('cinema')  || '[]');
 
-  // ── Persistance (localStorage — fonctionne sur GitHub Pages) ──
-  function save() {
-    localStorage.setItem('todos',   JSON.stringify(todos));
-    localStorage.setItem('entries', JSON.stringify(entries));
+function save(){
+  localStorage.setItem('todos',   JSON.stringify(todos));
+  localStorage.setItem('entries', JSON.stringify(entries));
+  localStorage.setItem('livres',  JSON.stringify(livres));
+  localStorage.setItem('musique', JSON.stringify(musique));
+  localStorage.setItem('cinema',  JSON.stringify(cinema));
+  flash('✓ Sauvegardé');
+}
+function flash(msg){
+  const el=document.getElementById('save-status');
+  el.textContent=msg; clearTimeout(el._t);
+  el._t=setTimeout(()=>el.textContent='',2200);
+}
+
+// ══════════════════════════════════════
+//  DRAWER
+// ══════════════════════════════════════
+const TITLES={todos:'Mes Tâches',entries:'Citations & Mots',livres:'Mes Livres',musique:'Ma Musique',cinema:'Mon Cinéma'};
+let currentSection='todos';
+let navStack=[];
+
+function toggleDrawer(){
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+  document.getElementById('burger').classList.toggle('open');
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('burger').classList.remove('open');
+}
+
+// ══════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById('screen-'+id);
+  if(el) el.classList.add('active');
+  // fab visibility: hide on form screens
+  const isForm=id.startsWith('add-');
+  document.getElementById('fab').classList.toggle('hidden',isForm);
+}
+
+function navigate(section){
+  currentSection=section; navStack=[];
+  showScreen(section);
+  document.querySelectorAll('.drawer-item').forEach(b=>b.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+section);
+  if(navEl) navEl.classList.add('active');
+  document.getElementById('topbar-title').textContent=TITLES[section]||'';
+  closeDrawer();
+}
+
+function openAdd(){
+  navStack.push(currentSection);
+  showScreen('add-'+currentSection);
+}
+
+function goBack(){
+  const prev=navStack.pop()||currentSection;
+  showScreen(prev);
+}
+
+// ══════════════════════════════════════
+//  STARS PICKER
+// ══════════════════════════════════════
+function buildStarsPicker(pickerId, hiddenId, value=0){
+  const container=document.getElementById(pickerId);
+  if(!container) return;
+  container.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const s=document.createElement('span');
+    s.textContent='★'; s.dataset.val=i;
+    if(i<=value) s.classList.add('on');
+    s.onclick=()=>{
+      document.getElementById(hiddenId).value=i;
+      container.querySelectorAll('span').forEach((sp,idx)=>sp.classList.toggle('on',idx<i));
+    };
+    container.appendChild(s);
   }
+}
+function initStarsPickers(){
+  buildStarsPicker('livres-stars-picker','livres-stars',0);
+  buildStarsPicker('musique-stars-picker','musique-stars',0);
+  buildStarsPicker('cinema-stars-picker','cinema-stars',0);
+}
+initStarsPickers();
 
-  function showSaved() {
-    const el = document.getElementById('save-status');
-    if (!el) return;
-    el.textContent = '✓ Sauvegardé';
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.textContent = ''; }, 2000);
+// ══════════════════════════════════════
+//  TODO
+// ══════════════════════════════════════
+let todoFilter='all';
+
+function setFilter(f,btn){
+  todoFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderTodos();
+}
+
+function saveTodo(){
+  const text=document.getElementById('todo-input').value.trim();
+  if(!text){document.getElementById('todo-input').focus();return;}
+  const editId=document.getElementById('todo-edit-id').value;
+  if(editId){
+    const t=todos.find(t=>t.id==editId);
+    if(t){t.text=text;t.priority=document.getElementById('todo-priority').value;}
+  } else {
+    todos.unshift({id:Date.now(),text,priority:document.getElementById('todo-priority').value,done:false,date:new Date().toLocaleDateString('fr-FR')});
   }
+  save(); resetTodoForm(); renderTodos(); goBack();
+}
 
-  // ── Navigation ────────────────────────────────────
-  function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-' + id).classList.add('active');
+function resetTodoForm(){
+  document.getElementById('todo-input').value='';
+  document.getElementById('todo-priority').value='moyenne';
+  document.getElementById('todo-edit-id').value='';
+  document.getElementById('todo-form-title').textContent='Nouvelle tâche';
+}
+
+function editTodoScreen(id){
+  const t=todos.find(t=>t.id===id); if(!t) return;
+  document.getElementById('todo-edit-id').value=id;
+  document.getElementById('todo-input').value=t.text;
+  document.getElementById('todo-priority').value=t.priority;
+  document.getElementById('todo-form-title').textContent='Modifier la tâche';
+  navStack.push(currentSection);
+  showScreen('add-todo');
+  setTimeout(()=>document.getElementById('todo-input').focus(),100);
+}
+
+function toggleTodo(id){
+  const t=todos.find(t=>t.id===id);
+  if(t){t.done=!t.done;save();renderTodos();}
+}
+function deleteTodo(id){
+  if(!confirm('Supprimer cette tâche ?')) return;
+  todos=todos.filter(t=>t.id!==id); save(); renderTodos();
+}
+
+function renderTodos(){
+  let v=todos;
+  if(todoFilter==='active') v=todos.filter(t=>!t.done);
+  if(todoFilter==='done')   v=todos.filter(t=>t.done);
+  if(['haute','moyenne','basse'].includes(todoFilter)) v=todos.filter(t=>t.priority===todoFilter);
+  document.getElementById('todo-count').textContent=v.length+' tâche'+(v.length!==1?'s':'');
+  const list=document.getElementById('todo-list');
+  if(!v.length){
+    list.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>${todoFilter==='all'?'Appuyez sur <strong>＋</strong> pour ajouter votre première tâche.':'Aucune tâche ici.'}</p></div>`;
+    return;
   }
-
-  function navigate(section) {
-    currentSection = section;
-    navHistory = [];
-    showScreen(section);
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('nav-' + section).classList.add('active');
-  }
-
-  function openAdd() {
-    navHistory.push(currentSection);
-    if (currentSection === 'todos') {
-      showScreen('add-todo');
-      setTimeout(() => document.getElementById('todo-input').focus(), 100);
-    } else {
-      showScreen('add-entry');
-    }
-  }
-
-  function goBack() {
-    const prev = navHistory.pop() || currentSection;
-    showScreen(prev);
-  }
-
-  // ── TODO ──────────────────────────────────────────
-  function addTodo() {
-    const text = document.getElementById('todo-input').value.trim();
-    if (!text) { document.getElementById('todo-input').focus(); return; }
-    todos.unshift({
-      id:       Date.now(),
-      text,
-      priority: document.getElementById('todo-priority').value,
-      done:     false,
-      date:     new Date().toLocaleDateString('fr-FR')
-    });
-    save();
-    document.getElementById('todo-input').value = '';
-    document.getElementById('todo-priority').value = 'moyenne';
-    renderTodos();
-    showSaved();
-    goBack();
-  }
-
-  function toggleTodo(id) {
-    const t = todos.find(t => t.id === id);
-    if (t) { t.done = !t.done; save(); renderTodos(); showSaved(); }
-  }
-
-  function deleteTodo(id) {
-    todos = todos.filter(t => t.id !== id);
-    save(); renderTodos(); showSaved();
-  }
-
-  function setFilter(f, btn) {
-    todoFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderTodos();
-  }
-
-  function renderTodos() {
-    let visible = todos;
-    if (todoFilter === 'active') visible = todos.filter(t => !t.done);
-    if (todoFilter === 'done')   visible = todos.filter(t =>  t.done);
-    if (['haute','moyenne','basse'].includes(todoFilter))
-      visible = todos.filter(t => t.priority === todoFilter);
-
-    document.getElementById('todo-count').textContent =
-      visible.length + ' tâche' + (visible.length !== 1 ? 's' : '');
-
-    const list = document.getElementById('todo-list');
-    if (!visible.length) {
-      const msg = todoFilter === 'all'
-        ? 'Appuyez sur <strong>＋</strong> pour ajouter votre première tâche.'
-        : 'Aucune tâche dans ce filtre.';
-      list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${msg}</p></div>`;
-      return;
-    }
-
-    const label = { haute:'Haute', moyenne:'Moyenne', basse:'Basse' };
-    list.innerHTML = visible.map(t => `
-      <div class="card todo-item ${t.done ? 'done' : ''}">
-        <div class="todo-check" onclick="toggleTodo(${t.id})">${t.done ? '✓' : ''}</div>
-        <div class="todo-body">
-          <div class="todo-text">${escHtml(t.text)}</div>
-          <div class="todo-meta">
-            <span class="priority-badge priority-${t.priority}">${label[t.priority]}</span>
-            <span class="todo-date">${t.date}</span>
-          </div>
+  const lbl={haute:'Haute',moyenne:'Moyenne',basse:'Basse'};
+  list.innerHTML=v.map(t=>`
+    <div class="card todo-item ${t.done?'done':''}">
+      <div class="todo-check" onclick="toggleTodo(${t.id})">${t.done?'✓':''}</div>
+      <div class="todo-body">
+        <div class="todo-text">${esc(t.text)}</div>
+        <div class="meta-row">
+          <span class="priority-badge priority-${t.priority}">${lbl[t.priority]}</span>
+          <span class="tag">${t.date}</span>
         </div>
-        <div class="todo-actions">
-          <button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">✕</button>
-        </div>
-      </div>`).join('');
-  }
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm btn-edit" onclick="editTodoScreen(${t.id})">✎</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
 
-  // ── ENTRIES ───────────────────────────────────────
-  function setEntryType(type, btn) {
-    entryType = type;
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('fields-citation').style.display = type === 'citation' ? '' : 'none';
-    document.getElementById('fields-mot').style.display      = type === 'mot'      ? '' : 'none';
-  }
+// Modal (kept as fallback, using screen-based edit instead)
+function closeModal(e){
+  if(e && e.target!==document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function applyTodoEdit(){
+  const id=+document.getElementById('modal-todo-id').value;
+  const t=todos.find(t=>t.id===id); if(!t) return;
+  t.text=document.getElementById('modal-todo-text').value.trim();
+  t.priority=document.getElementById('modal-todo-priority').value;
+  save(); renderTodos();
+  document.getElementById('modal-overlay').classList.remove('open');
+}
 
-  function addEntry() {
-    let entry;
-    if (entryType === 'citation') {
-      const text = document.getElementById('entry-text').value.trim();
-      if (!text) { document.getElementById('entry-text').focus(); return; }
-      entry = {
-        id: Date.now(), type: 'citation', text,
-        author: document.getElementById('entry-author').value.trim(),
-        date: new Date().toLocaleDateString('fr-FR')
-      };
-      document.getElementById('entry-text').value   = '';
-      document.getElementById('entry-author').value = '';
-    } else {
-      const mot = document.getElementById('entry-mot').value.trim();
-      const def = document.getElementById('entry-definition').value.trim();
-      if (!mot || !def) { document.getElementById(!mot ? 'entry-mot' : 'entry-definition').focus(); return; }
-      entry = {
-        id: Date.now(), type: 'mot', mot, definition: def,
-        date: new Date().toLocaleDateString('fr-FR')
-      };
-      document.getElementById('entry-mot').value        = '';
-      document.getElementById('entry-definition').value = '';
-    }
+// ══════════════════════════════════════
+//  ENTRIES (citations & mots)
+// ══════════════════════════════════════
+let entryType='citation';
+
+function setEntryType(type,btn){
+  entryType=type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fields-citation').style.display=type==='citation'?'':'none';
+  document.getElementById('fields-mot').style.display=type==='mot'?'':'none';
+}
+
+function saveEntry(){
+  const editId=document.getElementById('entry-edit-id').value;
+  let entry;
+  if(entryType==='citation'){
+    const text=document.getElementById('entry-text').value.trim();
+    if(!text){document.getElementById('entry-text').focus();return;}
+    entry={id:editId||Date.now(),type:'citation',text,author:document.getElementById('entry-author').value.trim(),date:new Date().toLocaleDateString('fr-FR')};
+    document.getElementById('entry-text').value='';
+    document.getElementById('entry-author').value='';
+  } else {
+    const mot=document.getElementById('entry-mot').value.trim();
+    const def=document.getElementById('entry-definition').value.trim();
+    if(!mot||!def){document.getElementById(!mot?'entry-mot':'entry-definition').focus();return;}
+    entry={id:editId||Date.now(),type:'mot',mot,definition:def,date:new Date().toLocaleDateString('fr-FR')};
+    document.getElementById('entry-mot').value='';
+    document.getElementById('entry-definition').value='';
+  }
+  if(editId){
+    const idx=entries.findIndex(e=>e.id==editId);
+    if(idx>-1) entries[idx]=entry;
+  } else {
     entries.unshift(entry);
-    save();
-    renderEntries();
-    showSaved();
-    goBack();
   }
+  document.getElementById('entry-edit-id').value='';
+  document.getElementById('entry-form-title').textContent='Nouvelle entrée';
+  save(); renderEntries(); goBack();
+}
 
-  function deleteEntry(id) {
-    entries = entries.filter(e => e.id !== id);
-    save(); renderEntries(); showSaved();
+function editEntry(id){
+  const e=entries.find(e=>e.id===id); if(!e) return;
+  document.getElementById('entry-edit-id').value=id;
+  document.getElementById('entry-form-title').textContent='Modifier l\'entrée';
+  if(e.type==='citation'){
+    setEntryType('citation',document.getElementById('type-citation'));
+    document.getElementById('entry-text').value=e.text;
+    document.getElementById('entry-author').value=e.author||'';
+  } else {
+    setEntryType('mot',document.getElementById('type-mot'));
+    document.getElementById('entry-mot').value=e.mot;
+    document.getElementById('entry-definition').value=e.definition;
   }
+  navStack.push(currentSection);
+  showScreen('add-entry');
+}
 
-  function renderEntries(search = '') {
-    const q = search.toLowerCase();
-    const visible = entries.filter(e =>
-      e.type === 'citation'
-        ? e.text.toLowerCase().includes(q) || (e.author||'').toLowerCase().includes(q)
-        : e.mot.toLowerCase().includes(q)  || e.definition.toLowerCase().includes(q)
-    );
+function deleteEntry(id){
+  if(!confirm('Supprimer cette entrée ?')) return;
+  entries=entries.filter(e=>e.id!==id); save(); renderEntries();
+}
 
-    document.getElementById('entry-count').textContent =
-      visible.length + ' entrée' + (visible.length !== 1 ? 's' : '');
-
-    const list = document.getElementById('entry-list');
-    if (!visible.length) {
-      const msg = !search && !entries.length
-        ? 'Appuyez sur <strong>＋</strong> pour ajouter une citation ou un mot.'
-        : 'Aucun résultat.';
-      list.innerHTML = `<div class="empty-state"><div class="icon">✦</div><p>${msg}</p></div>`;
-      return;
-    }
-
-    list.innerHTML = visible.map(e => {
-      if (e.type === 'citation') return `
-        <div class="card">
-          <span class="entry-type-label type-citation">✦ Citation</span>
-          <div class="entry-title entry-citation">"${escHtml(e.text)}"</div>
-          ${e.author ? `<div class="entry-sub">— ${escHtml(e.author)}</div>` : ''}
-          <div class="entry-footer">
-            <span class="entry-date">${e.date}</span>
-            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
-          </div>
-        </div>`;
-      return `
-        <div class="card">
-          <span class="entry-type-label type-mot">◈ Mot</span>
-          <div class="entry-title">${escHtml(e.mot)}</div>
-          <div class="entry-def">${escHtml(e.definition)}</div>
-          <div class="entry-footer">
-            <span class="entry-date">${e.date}</span>
-            <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">Supprimer</button>
-          </div>
-        </div>`;
-    }).join('');
+function renderEntries(search=''){
+  const q=search.toLowerCase();
+  const v=entries.filter(e=>e.type==='citation'
+    ?e.text.toLowerCase().includes(q)||(e.author||'').toLowerCase().includes(q)
+    :e.mot.toLowerCase().includes(q)||e.definition.toLowerCase().includes(q));
+  document.getElementById('entry-count').textContent=v.length+' entrée'+(v.length!==1?'s':'');
+  const list=document.getElementById('entry-list');
+  if(!v.length){
+    list.innerHTML=`<div class="empty-state"><div class="icon">✦</div><p>${!search&&!entries.length?'Appuyez sur <strong>＋</strong> pour ajouter une citation ou un mot.':'Aucun résultat.'}</p></div>`;
+    return;
   }
+  list.innerHTML=v.map(e=>{
+    if(e.type==='citation') return `
+      <div class="card">
+        <span class="entry-type-label type-citation">✦ Citation</span>
+        <div class="entry-title entry-citation">"${esc(e.text)}"</div>
+        ${e.author?`<div class="entry-sub">— ${esc(e.author)}</div>`:''}
+        <div class="btn-row">
+          <span class="tag">${e.date}</span>
+          <button class="btn btn-sm btn-edit" onclick="editEntry(${e.id})">✎ Modifier</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+        </div>
+      </div>`;
+    return `
+      <div class="card">
+        <span class="entry-type-label type-mot">◈ Mot</span>
+        <div class="entry-title">${esc(e.mot)}</div>
+        <div class="entry-def">${esc(e.definition)}</div>
+        <div class="btn-row">
+          <span class="tag">${e.date}</span>
+          <button class="btn btn-sm btn-edit" onclick="editEntry(${e.id})">✎ Modifier</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
 
-  // ── Utils ─────────────────────────────────────────
-  function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ══════════════════════════════════════
+//  MEDIA (livres / musique / cinéma)
+// ══════════════════════════════════════
+const MEDIA_CFG={
+  livres: {
+    icon:'📚', coverIcon:'📖',
+    fields:['titre','auteur','statut','note','stars'],
+    titleField:'titre', subField:'auteur',
+    hasStatut:true, hasStars:true,
+    statusLabels:{'a-faire':'À lire','en-cours':'En cours','lu':'Lu'},
+    statusClasses:{'a-faire':'status-a-faire','en-cours':'status-en-cours','lu':'status-lu'},
+  },
+  musique:{
+    icon:'🎵', coverIcon:'🎵',
+    coverClass:'musique',
+    fields:['titre','arteur','genre','note','stars'],
+    titleField:'titre', subField:'arteur',
+    hasStatut:false, hasStars:true,
+    extraField:'genre',
+  },
+  cinema:{
+    icon:'🎬', coverIcon:'🎬',
+    coverClass:'cinema',
+    fields:['titre','real','type','statut','note','stars'],
+    titleField:'titre', subField:'real',
+    hasStatut:true, hasStars:true,
+    statusLabels:{'a-faire':'À voir','en-cours':'En cours','lu':'Vu'},
+    statusClasses:{'a-faire':'status-a-faire','en-cours':'status-en-cours','lu':'status-lu'},
+    extraField:'type',
+  },
+};
+
+function getStore(section){
+  if(section==='livres')  return livres;
+  if(section==='musique') return musique;
+  if(section==='cinema')  return cinema;
+  return [];
+}
+function setStore(section,arr){
+  if(section==='livres')  livres=arr;
+  if(section==='musique') musique=arr;
+  if(section==='cinema')  cinema=arr;
+}
+
+function saveMedia(section){
+  const cfg=MEDIA_CFG[section];
+  const titre=document.getElementById(section+'-titre').value.trim();
+  if(!titre){document.getElementById(section+'-titre').focus();return;}
+  const editId=document.getElementById(section+'-edit-id').value;
+  const stars=+document.getElementById(section+'-stars').value||0;
+
+  let item={id:editId||Date.now(),date:new Date().toLocaleDateString('fr-FR'),titre,stars};
+  if(section==='livres')  { item.auteur=document.getElementById('livres-auteur').value.trim(); item.statut=document.getElementById('livres-statut').value; item.note=document.getElementById('livres-note').value.trim(); }
+  if(section==='musique') { item.artiste=document.getElementById('musique-arteur').value.trim(); item.genre=document.getElementById('musique-genre').value.trim(); item.note=document.getElementById('musique-note').value.trim(); }
+  if(section==='cinema')  { item.real=document.getElementById('cinema-real').value.trim(); item.type=document.getElementById('cinema-type').value; item.statut=document.getElementById('cinema-statut').value; item.note=document.getElementById('cinema-note').value.trim(); }
+
+  const store=getStore(section);
+  if(editId){
+    const idx=store.findIndex(i=>i.id==editId);
+    if(idx>-1) store[idx]=item; else store.unshift(item);
+  } else { store.unshift(item); }
+  setStore(section,store);
+  resetMediaForm(section);
+  save(); renderMedia(section); goBack();
+}
+
+function resetMediaForm(section){
+  document.getElementById(section+'-edit-id').value='';
+  document.getElementById(section+'-titre').value='';
+  document.getElementById(section+'-stars').value='0';
+  buildStarsPicker(section+'-stars-picker',section+'-stars',0);
+  if(section==='livres') { document.getElementById('livres-auteur').value=''; document.getElementById('livres-statut').value='a-faire'; document.getElementById('livres-note').value=''; }
+  if(section==='musique'){ document.getElementById('musique-arteur').value=''; document.getElementById('musique-genre').value=''; document.getElementById('musique-note').value=''; }
+  if(section==='cinema') { document.getElementById('cinema-real').value=''; document.getElementById('cinema-type').value='Film'; document.getElementById('cinema-statut').value='a-faire'; document.getElementById('cinema-note').value=''; }
+  const titleEl=document.getElementById(section+'-form-title');
+  if(titleEl) titleEl.textContent={livres:'Nouveau livre',musique:'Nouvel album / titre',cinema:'Nouveau film / série'}[section];
+}
+
+function editMedia(section,id){
+  const store=getStore(section);
+  const item=store.find(i=>i.id===id); if(!item) return;
+  document.getElementById(section+'-edit-id').value=id;
+  document.getElementById(section+'-titre').value=item.titre||'';
+  document.getElementById(section+'-stars').value=item.stars||0;
+  buildStarsPicker(section+'-stars-picker',section+'-stars',item.stars||0);
+  if(section==='livres') { document.getElementById('livres-auteur').value=item.auteur||''; document.getElementById('livres-statut').value=item.statut||'a-faire'; document.getElementById('livres-note').value=item.note||''; }
+  if(section==='musique'){ document.getElementById('musique-arteur').value=item.artiste||''; document.getElementById('musique-genre').value=item.genre||''; document.getElementById('musique-note').value=item.note||''; }
+  if(section==='cinema') { document.getElementById('cinema-real').value=item.real||''; document.getElementById('cinema-type').value=item.type||'Film'; document.getElementById('cinema-statut').value=item.statut||'a-faire'; document.getElementById('cinema-note').value=item.note||''; }
+  const titleEl=document.getElementById(section+'-form-title');
+  if(titleEl) titleEl.textContent='Modifier';
+  navStack.push(currentSection);
+  showScreen('add-'+section);
+}
+
+function deleteMedia(section,id){
+  if(!confirm('Supprimer cet élément ?')) return;
+  setStore(section,getStore(section).filter(i=>i.id!==id));
+  save(); renderMedia(section);
+}
+
+function starsHtml(n){
+  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'var(--gold)':'var(--border)'};font-size:.95rem">★</span>`).join('');
+}
+
+function renderMedia(section,search=''){
+  const cfg=MEDIA_CFG[section];
+  const store=getStore(section);
+  const q=search.toLowerCase();
+  const v=store.filter(i=>(i.titre||'').toLowerCase().includes(q)||(i.auteur||i.artiste||i.real||'').toLowerCase().includes(q));
+  document.getElementById(section+'-count').textContent=v.length+' élément'+(v.length!==1?'s':'');
+  const list=document.getElementById(section+'-list');
+  if(!v.length){
+    const emptyMsg=!search&&!store.length?'Appuyez sur <strong>＋</strong> pour ajouter un élément.':'Aucun résultat.';
+    list.innerHTML=`<div class="empty-state"><div class="icon">${cfg.icon}</div><p>${emptyMsg}</p></div>`;
+    return;
   }
+  list.innerHTML=v.map(item=>{
+    const sub=item.auteur||item.artiste||item.real||'';
+    const coverClass=cfg.coverClass||'';
+    const statusHtml=item.statut&&cfg.statusLabels?`<span class="status-badge ${cfg.statusClasses[item.statut]}">${cfg.statusLabels[item.statut]}</span>`:'';
+    const extraHtml=item.genre?`<span class="tag">${esc(item.genre)}</span>`:item.type?`<span class="tag">${esc(item.type)}</span>`:'';
+    return `
+    <div class="card">
+      <div class="media-card-inner">
+        <div class="media-cover ${coverClass}">${cfg.coverIcon}</div>
+        <div class="media-info">
+          <div class="media-title">${esc(item.titre)}</div>
+          ${sub?`<div class="media-sub">${esc(sub)}</div>`:''}
+          <div class="meta-row">${statusHtml}${extraHtml}<span class="tag">${item.date}</span></div>
+          ${item.stars?`<div class="stars">${starsHtml(item.stars)}</div>`:''}
+          ${item.note?`<div class="media-note" style="margin-top:8px">${esc(item.note)}</div>`:''}
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sm btn-edit" onclick="editMedia('${section}',${item.id})">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMedia('${section}',${item.id})">✕ Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  // ── Init ──────────────────────────────────────────
-  renderTodos();
-  renderEntries();
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+function esc(s=''){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+renderTodos();
+renderEntries();
+renderMedia('livres');
+renderMedia('musique');
+renderMedia('cinema');
 </script>
 </body>
 </html>
