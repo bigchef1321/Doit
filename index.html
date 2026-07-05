@@ -138,7 +138,23 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
 .btn-edit:hover{background:var(--surface);border-color:var(--violet);color:var(--cream)}
 .btn-success{background:var(--success)}
 .btn-success:hover{background:#80d49a}
-.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.btn-row{
+  display:flex;gap:8px;justify-content:flex-end;
+  overflow:hidden;opacity:0;max-height:0;
+  margin-top:0;padding-top:0;border-top:none;
+  transition:max-height .32s ease,opacity .25s ease,margin-top .3s,padding-top .3s,border .3s;
+}
+.card.actions-open .btn-row{
+  max-height:60px;opacity:1;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+}
+.card{position:relative;user-select:none;-webkit-user-select:none}
+.card.pressing{border-color:var(--violet) !important;box-shadow:0 0 0 2px rgba(124,111,205,.3)}
+/* hint discret */
+.card:not(.actions-open)::after{
+  content:'⋯';position:absolute;bottom:9px;right:14px;
+  font-size:.8rem;color:var(--border);pointer-events:none;
+}
 
 /* ── FAB ── */
 .fab{
@@ -992,6 +1008,68 @@ function renderMedia(section,search=''){
 function esc(s=''){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ══════════════════════════════════════
+//  LONG PRESS
+// ══════════════════════════════════════
+let pressTimer = null;
+let pressTarget = null;
+
+function startPress(e){
+  const card = e.currentTarget;
+  // ignore si on tape sur un bouton
+  if(e.target.closest('button,.todo-check')) return;
+  card.classList.add('pressing');
+  pressTarget = card;
+  pressTimer = setTimeout(()=>{
+    card.classList.remove('pressing');
+    toggleActions(card);
+    // vibration mobile si dispo
+    if(navigator.vibrate) navigator.vibrate(40);
+  }, 500);
+}
+
+function cancelPress(e){
+  if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; }
+  if(pressTarget){ pressTarget.classList.remove('pressing'); pressTarget=null; }
+}
+
+function toggleActions(card){
+  const isOpen = card.classList.contains('actions-open');
+  // fermer tous les autres
+  document.querySelectorAll('.card.actions-open').forEach(c=>{
+    if(c!==card) c.classList.remove('actions-open');
+  });
+  card.classList.toggle('actions-open', !isOpen);
+}
+
+// Fermer les actions si on clique ailleurs
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.card')) {
+    document.querySelectorAll('.card.actions-open').forEach(c=>c.classList.remove('actions-open'));
+  }
+});
+
+// Attache les listeners sur chaque carte dynamiquement
+function attachLongPress(){
+  document.querySelectorAll('.card').forEach(card=>{
+    // éviter les doublons
+    if(card.dataset.lpAttached) return;
+    card.dataset.lpAttached='1';
+    card.addEventListener('mousedown',  startPress);
+    card.addEventListener('touchstart', startPress, {passive:true});
+    card.addEventListener('mouseup',    cancelPress);
+    card.addEventListener('mouseleave', cancelPress);
+    card.addEventListener('touchend',   cancelPress);
+    card.addEventListener('touchcancel',cancelPress);
+    // empêche menu contextuel mobile
+    card.addEventListener('contextmenu', e=>e.preventDefault());
+  });
+}
+
+// Observer les nouvelles cartes ajoutées dynamiquement
+const lpObserver = new MutationObserver(()=> attachLongPress());
+lpObserver.observe(document.body, {childList:true, subtree:true});
 
 // ══════════════════════════════════════
 //  INIT
