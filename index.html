@@ -5,6 +5,88 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mon Carnet Numérique</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<!-- Firebase SDK -->
+<script type="module">
+// ══════════════════════════════════════
+//  ⚙️  REMPLACE ICI ta config Firebase
+// ══════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "REMPLACE_PAR_TON_API_KEY",
+  authDomain:        "REMPLACE_PAR_TON_AUTH_DOMAIN",
+  projectId:         "REMPLACE_PAR_TON_PROJECT_ID",
+  storageBucket:     "REMPLACE_PAR_TON_STORAGE_BUCKET",
+  messagingSenderId: "REMPLACE_PAR_TON_MESSAGING_SENDER_ID",
+  appId:             "REMPLACE_PAR_TON_APP_ID"
+};
+
+const app      = initializeApp(firebaseConfig);
+const auth     = getAuth(app);
+const db       = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// ── Expose aux fonctions globales ──────
+window._fbAuth = auth;
+window._fbDb   = db;
+
+// ── Connexion Google ───────────────────
+window.loginGoogle = async () => {
+  try { await signInWithPopup(auth, provider); }
+  catch(e){ console.error(e); }
+};
+window.logoutUser = async () => {
+  await signOut(auth);
+  window._fbUid = null;
+  showAuthScreen();
+};
+
+// ── Écoute état connexion ──────────────
+onAuthStateChanged(auth, async user => {
+  if(user){
+    window._fbUid = user.uid;
+    document.getElementById('auth-name').textContent = user.displayName || user.email;
+    document.getElementById('auth-avatar').src = user.photoURL || '';
+    hideAuthScreen();
+    // Écoute temps réel des données
+    const ref = doc(db, 'users', user.uid);
+    onSnapshot(ref, snap => {
+      if(snap.exists()){
+        const d = snap.data();
+        window.todos   = d.todos   || [];
+        window.entries = d.entries || [];
+        window.livres  = d.livres  || [];
+        window.musique = d.musique || [];
+        window.cinema  = d.cinema  || [];
+        renderTodos();
+        renderEntries();
+        renderMedia('livres');
+        renderMedia('musique');
+        renderMedia('cinema');
+      }
+    });
+  } else {
+    showAuthScreen();
+  }
+});
+
+// ── Sauvegarde dans Firestore ──────────
+window._cloudSave = async () => {
+  if(!window._fbUid) return;
+  const ref = doc(window._fbDb, 'users', window._fbUid);
+  await setDoc(ref, {
+    todos:   window.todos,
+    entries: window.entries,
+    livres:  window.livres,
+    musique: window.musique,
+    cinema:  window.cinema,
+  });
+};
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -273,6 +355,32 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
 </head>
 <body>
 
+<!-- ══════ AUTH SCREEN ══════ -->
+<div id="auth-screen" style="
+  display:none;position:fixed;inset:0;z-index:999;
+  background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:24px;padding:32px;text-align:center;">
+  <div style="font-size:3rem">📒</div>
+  <div>
+    <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">Bienvenue</p>
+    <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700">Mon <em style="font-style:italic;color:var(--violet-lt)">Carnet</em></h1>
+  </div>
+  <p style="color:var(--muted);font-size:.9rem;max-width:280px;line-height:1.6">Connecte-toi pour accéder à tes données sur tous tes appareils.</p>
+  <button onclick="loginGoogle()" style="
+    display:flex;align-items:center;gap:12px;
+    background:white;color:#1a1a1a;border:none;border-radius:10px;
+    padding:13px 24px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:600;
+    cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:opacity .2s">
+    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.7 0 6.7 5.4 2.7 13.3l7.8 6C12.4 13 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17z"/><path fill="#FBBC05" d="M10.5 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.8l-7.8 6C6.7 42.6 14.7 48 24 48z"/></svg>
+    Continuer avec Google
+  </button>
+  <p id="config-warning" style="color:var(--danger);font-size:.78rem;max-width:300px;line-height:1.5;display:none">
+    ⚠️ Firebase non configuré. Remplace les valeurs <code>REMPLACE_PAR_...</code> dans le fichier par ta config Firebase.
+  </p>
+</div>
+
+<!-- ══════ USER BADGE (topbar) ══════ -->
+
 <!-- ══════ TOP BAR ══════ -->
 <div class="topbar" id="topbar">
   <button class="burger-btn" id="burger" onclick="toggleDrawer()" aria-label="Menu">
@@ -280,6 +388,10 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
   </button>
   <span class="topbar-title" id="topbar-title">Mes Tâches</span>
   <span id="save-status" class="save-status"></span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <img id="auth-avatar" src="" style="width:28px;height:28px;border-radius:50%;display:none;object-fit:cover;border:1px solid var(--border)"/>
+    <button onclick="logoutUser()" title="Se déconnecter" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:2px 6px;border-radius:6px;transition:color .2s" onmouseover="this.style.color='var(--cream)'" onmouseout="this.style.color='var(--muted)'">⏏</button>
+  </div>
 </div>
 
 <!-- ══════ DRAWER ══════ -->
@@ -1072,13 +1184,39 @@ const lpObserver = new MutationObserver(()=> attachLongPress());
 lpObserver.observe(document.body, {childList:true, subtree:true});
 
 // ══════════════════════════════════════
+//  AUTH UI
+// ══════════════════════════════════════
+function showAuthScreen(){
+  const el = document.getElementById('auth-screen');
+  el.style.display = 'flex';
+  // Détecter config non remplie
+  const w = document.getElementById('config-warning');
+  if(w) w.style.display = 'block';
+}
+function hideAuthScreen(){
+  const el = document.getElementById('auth-screen');
+  el.style.display = 'none';
+  const av = document.getElementById('auth-avatar');
+  if(av) av.style.display = 'block';
+  const w = document.getElementById('config-warning');
+  if(w) w.style.display = 'none';
+}
+
+// ══════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════
+// Charge depuis localStorage en attendant Firebase
+todos   = JSON.parse(localStorage.getItem('todos')   || '[]');
+entries = JSON.parse(localStorage.getItem('entries') || '[]');
+livres  = JSON.parse(localStorage.getItem('livres')  || '[]');
+musique = JSON.parse(localStorage.getItem('musique') || '[]');
+cinema  = JSON.parse(localStorage.getItem('cinema')  || '[]');
 renderTodos();
 renderEntries();
 renderMedia('livres');
 renderMedia('musique');
 renderMedia('cinema');
+// Auth screen géré par onAuthStateChanged Firebase
 </script>
 </body>
 </html>
