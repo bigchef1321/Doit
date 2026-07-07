@@ -3,525 +3,360 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Mon Carnet Numérique</title>
+<title>Mon Carnet</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<!-- Firebase SDK -->
-<script type="module">
-// ══════════════════════════════════════
-//  ⚙️  REMPLACE ICI ta config Firebase
-// ══════════════════════════════════════
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDSVXO2XiO9wqPtD_yrn1Yaw0UtUSysbBk",
-  authDomain: "ma-liste-25e70.firebaseapp.com",
-  projectId: "ma-liste-25e70",
-  storageBucket: "ma-liste-25e70.firebasestorage.app",
-  messagingSenderId: "259860484440",
-  appId: "1:259860484440:web:5d5fc6aa51f4b27ae8552d"
-};
-
-const app      = initializeApp(firebaseConfig);
-const auth     = getAuth(app);
-const db       = getFirestore(app);
-const provider = new GoogleAuthProvider();
-
-// ── Expose aux fonctions globales ──────
-window._fbAuth = auth;
-window._fbDb   = db;
-
-// ── Connexion Google ───────────────────
-window.loginGoogle = async () => {
-  try { await signInWithPopup(auth, provider); }
-  catch(e){ console.error(e); }
-};
-window.logoutUser = async () => {
-  await signOut(auth);
-  window._fbUid = null;
-  showAuthScreen();
-};
-
-// ── Écoute état connexion ──────────────
-onAuthStateChanged(auth, async user => {
-  if(user){
-    window._fbUid = user.uid;
-    document.getElementById('auth-name').textContent = user.displayName || user.email;
-    document.getElementById('auth-avatar').src = user.photoURL || '';
-    hideAuthScreen();
-    // Écoute temps réel des données
-    const ref = doc(db, 'users', user.uid);
-    onSnapshot(ref, snap => {
-      if(snap.exists()){
-        const d = snap.data();
-        window.todos   = d.todos   || [];
-        window.entries = d.entries || [];
-        window.livres  = d.livres  || [];
-        window.musique = d.musique || [];
-        window.cinema  = d.cinema  || [];
-        renderTodos();
-        renderEntries();
-        renderMedia('livres');
-        renderMedia('musique');
-        renderMedia('cinema');
-      }
-    });
-  } else {
-    showAuthScreen();
-  }
-});
-
-// ── Sauvegarde dans Firestore ──────────
-window._cloudSave = async () => {
-  if(!window._fbUid) return;
-  const ref = doc(window._fbDb, 'users', window._fbUid);
-  await setDoc(ref, {
-    todos:   window.todos,
-    entries: window.entries,
-    livres:  window.livres,
-    musique: window.musique,
-    cinema:  window.cinema,
-  });
-};
-</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#1A1B2E;--surface:#23253A;--surface2:#2D2F4A;--border:#3A3C58;
   --violet:#7C6FCD;--violet-lt:#A99EE0;--gold:#D4AF6A;--cream:#F0EDE8;
-  --muted:#8A8BA8;--danger:#E07C7C;--success:#6CC68A;
-  --radius:12px;--radius-sm:7px;--shadow:0 4px 28px rgba(0,0,0,.4);--tr:.22s ease;
+  --muted:#8A8BA8;--danger:#E07C7C;--success:#6CC68A;--warn:#D4AF6A;
+  --radius:12px;--radius-sm:7px;--shadow:0 4px 28px rgba(0,0,0,.4);--tr:.2s ease;
 }
 body{background:var(--bg);color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background:
-  radial-gradient(ellipse 80% 50% at 20% 10%,rgba(124,111,205,.08) 0%,transparent 60%),
-  radial-gradient(ellipse 60% 40% at 80% 90%,rgba(212,175,106,.06) 0%,transparent 60%);
+  radial-gradient(ellipse 80% 50% at 20% 10%,rgba(124,111,205,.07) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 90%,rgba(212,175,106,.05) 0%,transparent 60%);
   pointer-events:none;z-index:0}
 
 /* ── SCREENS ── */
-.screen{display:none;position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 16px 110px;animation:fadeUp .28s ease both}
+.screen{display:none;position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 16px 100px;animation:fadeUp .25s ease both}
 .screen.active{display:block}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── TOP BAR ── */
 .topbar{
   position:sticky;top:0;z-index:200;
-  background:rgba(26,27,46,.92);backdrop-filter:blur(14px);
+  background:rgba(26,27,46,.95);backdrop-filter:blur(16px);
   border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;
-  max-width:100%;
+  padding:14px 18px;
 }
-.topbar-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--violet-lt)}
-.burger-btn{
-  background:none;border:none;cursor:pointer;
-  display:flex;flex-direction:column;gap:5px;padding:4px;
-  z-index:300;
-}
-.burger-btn span{
-  display:block;width:24px;height:2px;background:var(--cream);
-  border-radius:2px;transition:all .3s ease;transform-origin:center;
-}
-.burger-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
-.burger-btn.open span:nth-child(2){opacity:0;transform:scaleX(0)}
-.burger-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-icon{font-size:1.3rem}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--cream)}
+.topbar-title em{font-style:italic;color:var(--violet-lt)}
+.save-pill{font-size:.7rem;color:var(--success);background:rgba(108,198,138,.12);border:1px solid rgba(108,198,138,.25);border-radius:20px;padding:3px 10px;opacity:0;transition:opacity .3s}
+.save-pill.show{opacity:1}
 
-/* ── DRAWER MENU ── */
-.drawer-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;
-  opacity:0;pointer-events:none;transition:opacity .3s ease;
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(26,27,46,.97);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:8px 0 18px;
 }
-.drawer-overlay.open{opacity:1;pointer-events:all}
-.drawer{
-  position:fixed;left:0;top:0;bottom:0;width:280px;max-width:85vw;
-  background:var(--surface);border-right:1px solid var(--border);
-  z-index:260;transform:translateX(-100%);transition:transform .3s ease;
-  display:flex;flex-direction:column;overflow-y:auto;
-}
-.drawer.open{transform:translateX(0)}
-.drawer-header{
-  padding:32px 24px 20px;
-  border-bottom:1px solid var(--border);
-}
-.drawer-header .eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
-.drawer-header h2{font-family:'Playfair Display',serif;font-size:1.3rem;font-style:italic;color:var(--cream)}
-.drawer-nav{padding:12px 0;flex:1}
-.drawer-item{
-  display:flex;align-items:center;gap:14px;
-  padding:13px 24px;
-  background:none;border:none;
-  color:var(--muted);font-family:'Inter',sans-serif;font-size:.95rem;
-  cursor:pointer;width:100%;text-align:left;
-  transition:background var(--tr),color var(--tr);
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:none;border:none;cursor:pointer;
+  padding:6px 14px;border-radius:12px;
+  transition:background var(--tr);
+  user-select:none;-webkit-user-select:none;
   position:relative;
 }
-.drawer-item .di-icon{font-size:1.2rem;width:26px;text-align:center}
-.drawer-item::before{
-  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
-  background:var(--violet);border-radius:0 3px 3px 0;
-  opacity:0;transition:opacity var(--tr);
+.nav-item .ni-icon{font-size:1.4rem;transition:transform .2s}
+.nav-item .ni-label{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:500;color:var(--muted);transition:color var(--tr)}
+.nav-item.active .ni-label{color:var(--violet-lt)}
+.nav-item.active .ni-icon{transform:scale(1.12)}
+/* Anneau actif */
+.nav-item.active::after{
+  content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+  width:24px;height:2px;background:var(--violet);border-radius:2px 2px 0 0;
 }
-.drawer-item:hover{background:var(--surface2);color:var(--cream)}
-.drawer-item.active{color:var(--cream);background:rgba(124,111,205,.12)}
-.drawer-item.active::before{opacity:1}
-.drawer-sep{height:1px;background:var(--border);margin:8px 20px}
+/* Effet appui long */
+.nav-item.pressing{background:rgba(124,111,205,.15)}
+.nav-item.pressing .ni-icon{transform:scale(0.9)}
+/* Tooltip appui long */
+.nav-item::before{
+  content:attr(data-hint);
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+  background:var(--violet);color:#fff;font-size:.72rem;font-family:'Inter',sans-serif;
+  padding:5px 10px;border-radius:8px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.nav-item.pressing::before{opacity:1}
+
+/* ── FORM SCREEN (slide depuis le bas) ── */
+.screen.form-screen{animation:slideUp .3s ease both}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── PAGE HEADER ── */
-.page-header{padding:24px 0 16px;display:flex;align-items:flex-end;justify-content:space-between}
-.page-header h1{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,5vw,2.2rem);font-weight:700;line-height:1.15}
+.page-header{padding:22px 0 14px;display:flex;align-items:center;justify-content:space-between}
+.page-header h1{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,5vw,2rem);font-weight:700;line-height:1.2}
 .page-header h1 em{font-style:italic;color:var(--violet-lt)}
-.page-header h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;flex:1}
+.page-header h2{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;flex:1}
 .back-btn{
   background:var(--surface);border:1px solid var(--border);border-radius:50%;
-  color:var(--muted);cursor:pointer;width:40px;height:40px;
-  display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;
-  transition:all var(--tr);margin-right:12px;
+  color:var(--muted);cursor:pointer;width:38px;height:38px;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+  flex-shrink:0;margin-right:12px;transition:all var(--tr);
 }
 .back-btn:hover{border-color:var(--violet);color:var(--cream)}
 
-/* ── CARDS & FORMS ── */
+/* ── CARDS ── */
 .card{
   background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px 20px;margin-bottom:12px;
-  transition:box-shadow var(--tr);
+  border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;
+  transition:box-shadow var(--tr),border-color var(--tr);
+  position:relative;user-select:none;-webkit-user-select:none;
 }
 .card:hover{box-shadow:var(--shadow)}
-.form-stack{display:flex;flex-direction:column;gap:14px}
+.card.pressing{border-color:var(--violet);box-shadow:0 0 0 2px rgba(124,111,205,.25)}
+/* Actions cachées */
+.card-actions{
+  display:flex;gap:8px;justify-content:flex-end;
+  overflow:hidden;max-height:0;opacity:0;
+  transition:max-height .3s ease,opacity .25s ease,margin-top .25s,padding-top .25s;
+  margin-top:0;padding-top:0;border-top:none;
+}
+.card.open .card-actions{
+  max-height:50px;opacity:1;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+}
+/* hint ··· */
+.card:not(.open)::after{
+  content:'···';position:absolute;bottom:8px;right:12px;
+  font-size:.75rem;color:var(--border);pointer-events:none;
+  letter-spacing:2px;
+}
+
+/* ── FORMS ── */
+.form-stack{display:flex;flex-direction:column;gap:13px}
 .form-group{display:flex;flex-direction:column;gap:6px}
-.form-label{font-size:.75rem;font-weight:600;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
+.form-label{font-size:.72rem;font-weight:600;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
 .input-field{
   width:100%;background:var(--surface2);border:1px solid var(--border);
   border-radius:var(--radius-sm);color:var(--cream);
-  font-family:'Inter',sans-serif;font-size:.92rem;padding:12px 15px;outline:none;
+  font-family:'Inter',sans-serif;font-size:.92rem;padding:12px 14px;outline:none;
   transition:border-color var(--tr);
 }
 .input-field::placeholder{color:var(--muted)}
 .input-field:focus{border-color:var(--violet)}
 select.input-field{cursor:pointer}
-textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
+textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
 
 /* ── BUTTONS ── */
 .btn{
   background:var(--violet);border:none;border-radius:var(--radius-sm);
   color:#fff;cursor:pointer;font-family:'Inter',sans-serif;
-  font-size:.9rem;font-weight:600;padding:12px 24px;
+  font-size:.88rem;font-weight:600;padding:11px 20px;
   transition:background var(--tr),transform .1s;white-space:nowrap;
 }
 .btn:hover{background:var(--violet-lt)}
 .btn:active{transform:scale(.97)}
-.btn-full{width:100%}
-.btn-sm{padding:6px 12px;font-size:.76rem;border-radius:6px}
-.btn-danger{background:var(--danger)}
-.btn-danger:hover{background:#f09090}
-.btn-edit{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
-.btn-edit:hover{background:var(--surface);border-color:var(--violet);color:var(--cream)}
-.btn-success{background:var(--success)}
-.btn-success:hover{background:#80d49a}
-.btn-row{
-  display:flex;gap:8px;justify-content:flex-end;
-  overflow:hidden;opacity:0;max-height:0;
-  margin-top:0;padding-top:0;border-top:none;
-  transition:max-height .32s ease,opacity .25s ease,margin-top .3s,padding-top .3s,border .3s;
-}
-.card.actions-open .btn-row{
-  max-height:60px;opacity:1;
-  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
-}
-.card{position:relative;user-select:none;-webkit-user-select:none}
-.card.pressing{border-color:var(--violet) !important;box-shadow:0 0 0 2px rgba(124,111,205,.3)}
-/* hint discret */
-.card:not(.actions-open)::after{
-  content:'⋯';position:absolute;bottom:9px;right:14px;
-  font-size:.8rem;color:var(--border);pointer-events:none;
-}
+.btn-full{width:100%;padding:13px}
+.btn-sm{padding:6px 12px;font-size:.75rem;border-radius:6px}
+.btn-danger{background:rgba(224,124,124,.15);border:1px solid var(--danger);color:var(--danger)}
+.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-edit{background:rgba(124,111,205,.12);border:1px solid var(--violet);color:var(--violet-lt)}
+.btn-edit:hover{background:var(--violet);color:#fff}
 
-/* ── FAB ── */
-.fab{
-  position:fixed;right:20px;bottom:24px;
-  width:58px;height:58px;background:var(--violet);border:none;border-radius:50%;
-  color:#fff;font-size:1.8rem;cursor:pointer;z-index:100;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 20px rgba(124,111,205,.55);
-  transition:background var(--tr),transform .15s,box-shadow var(--tr);
-}
-.fab:hover{background:var(--violet-lt);box-shadow:0 6px 28px rgba(124,111,205,.65)}
-.fab:active{transform:scale(.92)}
-.fab.hidden{display:none}
+/* ── BADGES ── */
+.badge{font-size:.67rem;font-weight:600;border-radius:4px;padding:2px 7px;letter-spacing:.3px}
+.badge-haute{background:rgba(224,124,124,.18);color:var(--danger)}
+.badge-moyenne{background:rgba(212,175,106,.18);color:var(--gold)}
+.badge-basse{background:rgba(108,198,138,.18);color:var(--success)}
+.badge-a-faire{background:rgba(138,139,168,.18);color:var(--muted)}
+.badge-en-cours{background:rgba(212,175,106,.18);color:var(--gold)}
+.badge-fait{background:rgba(108,198,138,.18);color:var(--success)}
+.badge-lu{background:rgba(108,198,138,.18);color:var(--success)}
+.badge-vu{background:rgba(108,198,138,.18);color:var(--success)}
+.badge-type{background:rgba(124,111,205,.15);color:var(--violet-lt)}
+.tag{font-size:.67rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--muted)}
+.meta{display:flex;gap:7px;align-items:center;margin-top:7px;flex-wrap:wrap}
 
-/* ── BADGES & META ── */
-.count-badge{font-size:.75rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
-.priority-badge{font-size:.68rem;font-weight:600;letter-spacing:.4px;border-radius:4px;padding:2px 7px}
-.priority-haute{background:rgba(224,124,124,.18);color:var(--danger)}
-.priority-moyenne{background:rgba(212,175,106,.18);color:var(--gold)}
-.priority-basse{background:rgba(108,198,138,.18);color:var(--success)}
-.tag{font-size:.68rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--muted)}
-.meta-row{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
-.save-status{font-size:.7rem;color:var(--success);min-height:1rem}
+/* ── SECTION BADGE (header) ── */
+.count-badge{font-size:.73rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
 
 /* ── FILTER BAR ── */
-.filter-bar{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .filter-btn{
   background:transparent;border:1px solid var(--border);border-radius:20px;
   color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
-  font-size:.76rem;padding:5px 13px;transition:all var(--tr);
+  font-size:.75rem;padding:4px 12px;transition:all var(--tr);
 }
 .filter-btn:hover,.filter-btn.active{background:var(--surface2);border-color:var(--violet);color:var(--cream)}
 
-/* ── TODO SPECIFIC ── */
-.todo-item{display:flex;align-items:flex-start;gap:14px}
-.todo-check{
-  flex-shrink:0;width:23px;height:23px;border:2px solid var(--border);
+/* ── SEARCH ── */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-wrap .input-field{padding-left:36px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+
+/* ── TODO ── */
+.todo-row{display:flex;align-items:flex-start;gap:12px}
+.check-box{
+  flex-shrink:0;width:22px;height:22px;border:2px solid var(--border);
   border-radius:6px;background:var(--surface2);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  margin-top:2px;font-size:13px;color:transparent;transition:all var(--tr);
+  margin-top:1px;font-size:12px;color:transparent;transition:all var(--tr);
 }
-.todo-item.done .todo-check{background:var(--success);border-color:var(--success);color:#fff}
-.todo-item.done .todo-text{text-decoration:line-through;color:var(--muted)}
+.todo-row.done .check-box{background:var(--success);border-color:var(--success);color:#fff}
+.todo-row.done .todo-text{text-decoration:line-through;color:var(--muted)}
 .todo-body{flex:1;min-width:0}
-.todo-text{font-size:.95rem;line-height:1.5}
+.todo-text{font-size:.93rem;line-height:1.5}
 
-/* ── ENTRIES ── */
+/* ── TYPE TOGGLE ── */
 .type-toggle{display:flex;gap:8px}
 .type-btn{
   flex:1;background:var(--surface2);border:1px solid var(--border);
   border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;
-  font-family:'Inter',sans-serif;font-size:.85rem;padding:10px;transition:all var(--tr);
+  font-family:'Inter',sans-serif;font-size:.83rem;padding:9px;transition:all var(--tr);
 }
-.type-btn.active{background:rgba(124,111,205,.2);border-color:var(--violet);color:var(--violet-lt)}
-.entry-type-label{font-size:.66rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
-.type-citation{background:rgba(212,175,106,.15);color:var(--gold)}
-.type-mot{background:rgba(124,111,205,.15);color:var(--violet-lt)}
-.entry-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;line-height:1.35;margin-bottom:6px}
-.entry-citation{font-style:italic}
-.entry-sub{font-size:.83rem;color:var(--gold);margin-bottom:8px}
-.entry-def{font-size:.9rem;line-height:1.7;color:#cac8e4}
+.type-btn.active{background:rgba(124,111,205,.18);border-color:var(--violet);color:var(--violet-lt)}
 
-/* ── MEDIA CARDS (livres/musique/cinéma) ── */
-.media-card-inner{display:flex;gap:16px;align-items:flex-start}
-.media-cover{
-  width:56px;height:72px;border-radius:6px;flex-shrink:0;
+/* ── ENTRIES ── */
+.entry-label{font-size:.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.label-citation{background:rgba(212,175,106,.15);color:var(--gold)}
+.label-mot{background:rgba(124,111,205,.15);color:var(--violet-lt)}
+.entry-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;line-height:1.35;margin-bottom:5px}
+.entry-italic{font-style:italic}
+.entry-author{font-size:.82rem;color:var(--gold);margin-bottom:6px}
+.entry-def{font-size:.88rem;line-height:1.7;color:#cac8e4}
+
+/* ── MEDIA ── */
+.media-row{display:flex;gap:14px;align-items:flex-start}
+.media-thumb{
+  flex-shrink:0;width:52px;height:68px;border-radius:8px;
   background:var(--surface2);border:1px solid var(--border);
-  display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+  display:flex;align-items:center;justify-content:center;font-size:1.5rem;
 }
-.media-cover.cinema{height:64px;width:64px;border-radius:50%}
-.media-cover.musique{height:64px;width:64px;border-radius:50%}
-.media-info{flex:1;min-width:0}
-.media-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:2px}
-.media-sub{font-size:.82rem;color:var(--gold);margin-bottom:6px}
-.media-note{font-size:.85rem;line-height:1.6;color:#cac8e4}
-.stars{color:var(--gold);font-size:1rem;letter-spacing:1px;margin-top:4px}
-.status-badge{font-size:.68rem;font-weight:600;border-radius:4px;padding:2px 7px}
-.status-lu{background:rgba(108,198,138,.18);color:var(--success)}
-.status-en-cours{background:rgba(212,175,106,.18);color:var(--gold)}
-.status-a-faire{background:rgba(138,139,168,.18);color:var(--muted)}
+.media-thumb.round{border-radius:50%;height:52px;width:52px}
+.media-body{flex:1;min-width:0}
+.media-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;line-height:1.3;margin-bottom:2px}
+.media-sub{font-size:.8rem;color:var(--gold);margin-bottom:5px}
+.media-note{font-size:.85rem;line-height:1.6;color:#cac8e4;margin-top:6px}
+.stars{font-size:.95rem;letter-spacing:1px;margin-top:3px}
 
-/* ── SEARCH ── */
-.search-wrap{position:relative;margin-bottom:18px}
-.search-wrap .input-field{padding-left:38px}
-.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+/* ── STARS PICKER ── */
+.stars-picker{display:flex;gap:8px}
+.star-btn{font-size:1.4rem;cursor:pointer;color:var(--border);transition:color .15s;background:none;border:none;padding:0}
+.star-btn.on{color:var(--gold)}
 
 /* ── EMPTY STATE ── */
-.empty-state{text-align:center;padding:56px 20px;color:var(--muted)}
-.empty-state .icon{font-size:2.6rem;margin-bottom:14px;opacity:.55}
-.empty-state p{font-size:.9rem;line-height:1.7}
+.empty{text-align:center;padding:52px 20px;color:var(--muted)}
+.empty .e-icon{font-size:2.4rem;margin-bottom:12px;opacity:.5}
+.empty p{font-size:.88rem;line-height:1.7}
 
-/* ── MODAL EDIT ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;
-  display:flex;align-items:flex-end;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .25s ease;
-}
-.modal-overlay.open{opacity:1;pointer-events:all}
-.modal{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:16px 16px 0 0;padding:24px 20px 36px;
-  width:100%;max-width:780px;
-  transform:translateY(30px);transition:transform .28s ease;
-  max-height:85vh;overflow-y:auto;
-}
-.modal-overlay.open .modal{transform:translateY(0)}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.modal-header h3{font-family:'Playfair Display',serif;font-size:1.1rem}
-.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.3rem;padding:4px}
-.modal-close:hover{color:var(--cream)}
-
-::-webkit-scrollbar{width:5px}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 </style>
 </head>
 <body>
 
-<!-- ══════ AUTH SCREEN ══════ -->
-<div id="auth-screen" style="
-  display:none;position:fixed;inset:0;z-index:999;
-  background:var(--bg);flex-direction:column;
-  align-items:center;justify-content:center;gap:24px;padding:32px;text-align:center;">
-  <div style="font-size:3rem">📒</div>
-  <div>
-    <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">Bienvenue</p>
-    <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700">Mon <em style="font-style:italic;color:var(--violet-lt)">Carnet</em></h1>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-icon" id="tb-icon">✓</span>
+    <span class="topbar-title" id="tb-title">Mes <em>tâches</em></span>
   </div>
-  <p style="color:var(--muted);font-size:.9rem;max-width:280px;line-height:1.6">Connecte-toi pour accéder à tes données sur tous tes appareils.</p>
-  <button onclick="loginGoogle()" style="
-    display:flex;align-items:center;gap:12px;
-    background:white;color:#1a1a1a;border:none;border-radius:10px;
-    padding:13px 24px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:600;
-    cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:opacity .2s">
-    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.7 0 6.7 5.4 2.7 13.3l7.8 6C12.4 13 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17z"/><path fill="#FBBC05" d="M10.5 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.8l-7.8 6C6.7 42.6 14.7 48 24 48z"/></svg>
-    Continuer avec Google
-  </button>
-  <p id="config-warning" style="color:var(--danger);font-size:.78rem;max-width:300px;line-height:1.5;display:none">
-    ⚠️ Firebase non configuré. Remplace les valeurs <code>REMPLACE_PAR_...</code> dans le fichier par ta config Firebase.
-  </p>
+  <span class="save-pill" id="save-pill">✓ Sauvegardé</span>
 </div>
-
-<!-- ══════ USER BADGE (topbar) ══════ -->
-
-<!-- ══════ TOP BAR ══════ -->
-<div class="topbar" id="topbar">
-  <button class="burger-btn" id="burger" onclick="toggleDrawer()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
-  <span class="topbar-title" id="topbar-title">Mes Tâches</span>
-  <span id="save-status" class="save-status"></span>
-  <div style="display:flex;align-items:center;gap:8px">
-    <img id="auth-avatar" src="" style="width:28px;height:28px;border-radius:50%;display:none;object-fit:cover;border:1px solid var(--border)"/>
-    <button onclick="logoutUser()" title="Se déconnecter" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:2px 6px;border-radius:6px;transition:color .2s" onmouseover="this.style.color='var(--cream)'" onmouseout="this.style.color='var(--muted)'">⏏</button>
-  </div>
-</div>
-
-<!-- ══════ DRAWER ══════ -->
-<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
-<nav class="drawer" id="drawer">
-  <div class="drawer-header">
-    <p class="eyebrow">Navigation</p>
-    <h2>Mon Carnet</h2>
-  </div>
-  <div class="drawer-nav">
-    <button class="drawer-item active" id="nav-todos"   onclick="navigate('todos')">   <span class="di-icon">✓</span> Tâches</button>
-    <button class="drawer-item"        id="nav-entries" onclick="navigate('entries')"> <span class="di-icon">✦</span> Citations & Mots</button>
-    <div class="drawer-sep"></div>
-    <button class="drawer-item"        id="nav-livres"  onclick="navigate('livres')">  <span class="di-icon">📚</span> Livres</button>
-    <button class="drawer-item"        id="nav-musique" onclick="navigate('musique')"> <span class="di-icon">🎵</span> Musique</button>
-    <button class="drawer-item"        id="nav-cinema"  onclick="navigate('cinema')">  <span class="di-icon">🎬</span> Cinéma</button>
-  </div>
-</nav>
 
 <!-- ══════════════════════════════════
-     SCREEN : LISTE TÂCHES
+     TODOS — liste
 ══════════════════════════════════ -->
-<div id="screen-todos" class="screen active">
+<div id="s-todos" class="screen active">
   <div class="page-header">
-    <div>
-      <h1>Mes <em>tâches</em></h1>
-    </div>
-    <span id="todo-count" class="count-badge">0</span>
+    <h1>Mes <em>tâches</em></h1>
+    <span id="todos-count" class="count-badge">0</span>
   </div>
   <div class="filter-bar">
     <button class="filter-btn active" onclick="setFilter('all',this)">Toutes</button>
-    <button class="filter-btn"        onclick="setFilter('active',this)">À faire</button>
-    <button class="filter-btn"        onclick="setFilter('done',this)">Terminées</button>
-    <button class="filter-btn"        onclick="setFilter('haute',this)">🔴 Haute</button>
-    <button class="filter-btn"        onclick="setFilter('moyenne',this)">🟡 Moyenne</button>
-    <button class="filter-btn"        onclick="setFilter('basse',this)">🟢 Basse</button>
+    <button class="filter-btn" onclick="setFilter('active',this)">À faire</button>
+    <button class="filter-btn" onclick="setFilter('done',this)">Terminées</button>
+    <button class="filter-btn" onclick="setFilter('haute',this)">🔴 Haute</button>
+    <button class="filter-btn" onclick="setFilter('moyenne',this)">🟡 Moyenne</button>
+    <button class="filter-btn" onclick="setFilter('basse',this)">🟢 Basse</button>
   </div>
-  <div id="todo-list"></div>
+  <div id="todos-list"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     SCREEN : FORMULAIRE TÂCHE
-══════════════════════════════════ -->
-<div id="screen-add-todo" class="screen">
+<!-- TODOS — formulaire -->
+<div id="s-todos-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="todo-form-title">Nouvelle tâche</h2>
+    <h2 id="todos-form-title">Nouvelle tâche</h2>
   </div>
   <div class="form-stack">
-    <input type="hidden" id="todo-edit-id"/>
+    <input type="hidden" id="todos-edit-id"/>
     <div class="form-group">
       <label class="form-label">Tâche</label>
-      <input id="todo-input" class="input-field" type="text" placeholder="Que faut-il faire ?"
-             onkeydown="if(event.key==='Enter') saveTodo()"/>
+      <input id="todos-text" class="input-field" type="text" placeholder="Que faut-il faire ?" onkeydown="if(event.key==='Enter')saveTodo()"/>
     </div>
     <div class="form-group">
       <label class="form-label">Priorité</label>
-      <select id="todo-priority" class="input-field">
+      <select id="todos-priority" class="input-field">
         <option value="haute">🔴 Haute</option>
         <option value="moyenne" selected>🟡 Moyenne</option>
         <option value="basse">🟢 Basse</option>
       </select>
     </div>
-    <button class="btn btn-full" onclick="saveTodo()">Enregistrer</button>
+    <button class="btn btn-full" style="margin-top:4px" onclick="saveTodo()">Enregistrer</button>
   </div>
 </div>
 
 <!-- ══════════════════════════════════
-     SCREEN : LISTE CITATIONS
+     CITATIONS — liste
 ══════════════════════════════════ -->
-<div id="screen-entries" class="screen">
+<div id="s-citations" class="screen">
   <div class="page-header">
     <h1>Citations &amp; <em>Mots</em></h1>
-    <span id="entry-count" class="count-badge">0</span>
+    <span id="citations-count" class="count-badge">0</span>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderEntries(this.value)"/>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderCitations(this.value)"/>
   </div>
-  <div id="entry-list"></div>
+  <div id="citations-list"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     SCREEN : FORMULAIRE CITATION
-══════════════════════════════════ -->
-<div id="screen-add-entry" class="screen">
+<!-- CITATIONS — formulaire -->
+<div id="s-citations-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="entry-form-title">Nouvelle entrée</h2>
+    <h2 id="citations-form-title">Nouvelle entrée</h2>
   </div>
   <div class="form-stack">
-    <input type="hidden" id="entry-edit-id"/>
+    <input type="hidden" id="citations-edit-id"/>
     <div class="form-group">
       <label class="form-label">Type</label>
       <div class="type-toggle">
-        <button class="type-btn active" id="type-citation" onclick="setEntryType('citation',this)">✦ Citation</button>
-        <button class="type-btn"        id="type-mot"      onclick="setEntryType('mot',this)">◈ Mot à retenir</button>
+        <button class="type-btn active" id="type-cit" onclick="setCitType('citation',this)">✦ Citation</button>
+        <button class="type-btn" id="type-mot" onclick="setCitType('mot',this)">◈ Mot</button>
       </div>
     </div>
-    <div id="fields-citation" class="form-stack">
-      <div class="form-group">
-        <label class="form-label">Citation</label>
-        <textarea id="entry-text" class="input-field" placeholder="Entrez la citation…"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
-        <input id="entry-author" class="input-field" type="text" placeholder="Nom de l'auteur…"/>
-      </div>
+    <div id="cit-fields" class="form-stack">
+      <div class="form-group"><label class="form-label">Citation</label>
+        <textarea id="cit-text" class="input-field" placeholder="Entrez la citation…"></textarea></div>
+      <div class="form-group"><label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+        <input id="cit-author" class="input-field" type="text" placeholder="Nom de l'auteur…"/></div>
     </div>
-    <div id="fields-mot" class="form-stack" style="display:none">
-      <div class="form-group">
-        <label class="form-label">Mot ou concept</label>
-        <input id="entry-mot" class="input-field" type="text" placeholder="Ex : sérendipité"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Définition</label>
-        <textarea id="entry-definition" class="input-field" placeholder="Entrez la définition…"></textarea>
-      </div>
+    <div id="mot-fields" class="form-stack" style="display:none">
+      <div class="form-group"><label class="form-label">Mot ou concept</label>
+        <input id="mot-word" class="input-field" type="text" placeholder="Ex : sérendipité"/></div>
+      <div class="form-group"><label class="form-label">Définition</label>
+        <textarea id="mot-def" class="input-field" placeholder="Entrez la définition…"></textarea></div>
     </div>
-    <button class="btn btn-full" onclick="saveEntry()">Enregistrer</button>
+    <button class="btn btn-full" style="margin-top:4px" onclick="saveCitation()">Enregistrer</button>
   </div>
 </div>
 
 <!-- ══════════════════════════════════
-     SCREEN : LIVRES
+     LIVRES — liste
 ══════════════════════════════════ -->
-<div id="screen-livres" class="screen">
+<div id="s-livres" class="screen">
   <div class="page-header">
     <h1>Mes <em>Livres</em></h1>
     <span id="livres-count" class="count-badge">0</span>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setMediaFilter('livres','all',this)">Tous</button>
+    <button class="filter-btn" onclick="setMediaFilter('livres','a-faire',this)">📖 À lire</button>
+    <button class="filter-btn" onclick="setMediaFilter('livres','en-cours',this)">⏳ En cours</button>
+    <button class="filter-btn" onclick="setMediaFilter('livres','lu',this)">✅ Lus</button>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
@@ -530,10 +365,8 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
   <div id="livres-list"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     SCREEN : FORMULAIRE LIVRE
-══════════════════════════════════ -->
-<div id="screen-add-livres" class="screen">
+<!-- LIVRES — formulaire -->
+<div id="s-livres-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
     <h2 id="livres-form-title">Nouveau livre</h2>
@@ -553,16 +386,16 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
     <div class="form-group"><label class="form-label">Note / avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
       <textarea id="livres-note" class="input-field" placeholder="Votre avis…"></textarea></div>
     <div class="form-group"><label class="form-label">Étoiles</label>
-      <div id="livres-stars-picker" class="stars-picker"></div>
+      <div class="stars-picker" id="livres-stars-ui"></div>
       <input type="hidden" id="livres-stars" value="0"/></div>
-    <button class="btn btn-full" onclick="saveMedia('livres')">Enregistrer</button>
+    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('livres')">Enregistrer</button>
   </div>
 </div>
 
 <!-- ══════════════════════════════════
-     SCREEN : MUSIQUE
+     MUSIQUE — liste
 ══════════════════════════════════ -->
-<div id="screen-musique" class="screen">
+<div id="s-musique" class="screen">
   <div class="page-header">
     <h1>Ma <em>Musique</em></h1>
     <span id="musique-count" class="count-badge">0</span>
@@ -574,38 +407,42 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
   <div id="musique-list"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     SCREEN : FORMULAIRE MUSIQUE
-══════════════════════════════════ -->
-<div id="screen-add-musique" class="screen">
+<!-- MUSIQUE — formulaire -->
+<div id="s-musique-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="musique-form-title">Nouvel album / titre</h2>
+    <h2 id="musique-form-title">Nouvel album</h2>
   </div>
   <div class="form-stack">
     <input type="hidden" id="musique-edit-id"/>
     <div class="form-group"><label class="form-label">Titre / Album</label>
       <input id="musique-titre" class="input-field" type="text" placeholder="Nom de l'album ou du titre"/></div>
     <div class="form-group"><label class="form-label">Artiste</label>
-      <input id="musique-arteur" class="input-field" type="text" placeholder="Nom de l'artiste"/></div>
+      <input id="musique-artiste" class="input-field" type="text" placeholder="Nom de l'artiste"/></div>
     <div class="form-group"><label class="form-label">Genre <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
       <input id="musique-genre" class="input-field" type="text" placeholder="Jazz, Rock, Classique…"/></div>
     <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
       <textarea id="musique-note" class="input-field" placeholder="Ce que vous en pensez…"></textarea></div>
     <div class="form-group"><label class="form-label">Étoiles</label>
-      <div id="musique-stars-picker" class="stars-picker"></div>
+      <div class="stars-picker" id="musique-stars-ui"></div>
       <input type="hidden" id="musique-stars" value="0"/></div>
-    <button class="btn btn-full" onclick="saveMedia('musique')">Enregistrer</button>
+    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('musique')">Enregistrer</button>
   </div>
 </div>
 
 <!-- ══════════════════════════════════
-     SCREEN : CINÉMA
+     CINÉMA — liste
 ══════════════════════════════════ -->
-<div id="screen-cinema" class="screen">
+<div id="s-cinema" class="screen">
   <div class="page-header">
     <h1>Mon <em>Cinéma</em></h1>
     <span id="cinema-count" class="count-badge">0</span>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setMediaFilter('cinema','all',this)">Tous</button>
+    <button class="filter-btn" onclick="setMediaFilter('cinema','a-faire',this)">🍿 À voir</button>
+    <button class="filter-btn" onclick="setMediaFilter('cinema','en-cours',this)">⏳ En cours</button>
+    <button class="filter-btn" onclick="setMediaFilter('cinema','vu',this)">✅ Vus</button>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
@@ -614,19 +451,17 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
   <div id="cinema-list"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     SCREEN : FORMULAIRE CINÉMA
-══════════════════════════════════ -->
-<div id="screen-add-cinema" class="screen">
+<!-- CINÉMA — formulaire -->
+<div id="s-cinema-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="cinema-form-title">Nouveau film / série</h2>
+    <h2 id="cinema-form-title">Nouveau film</h2>
   </div>
   <div class="form-stack">
     <input type="hidden" id="cinema-edit-id"/>
     <div class="form-group"><label class="form-label">Titre</label>
       <input id="cinema-titre" class="input-field" type="text" placeholder="Titre du film ou de la série"/></div>
-    <div class="form-group"><label class="form-label">Réalisateur / Créateur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+    <div class="form-group"><label class="form-label">Réalisateur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
       <input id="cinema-real" class="input-field" type="text" placeholder="Nom du réalisateur"/></div>
     <div class="form-group"><label class="form-label">Type</label>
       <select id="cinema-type" class="input-field">
@@ -638,592 +473,497 @@ textarea.input-field{min-height:90px;resize:vertical;line-height:1.6}
       <select id="cinema-statut" class="input-field">
         <option value="a-faire">🍿 À voir</option>
         <option value="en-cours">⏳ En cours</option>
-        <option value="lu">✅ Vu</option>
+        <option value="vu">✅ Vu</option>
       </select></div>
     <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
       <textarea id="cinema-note" class="input-field" placeholder="Votre avis…"></textarea></div>
     <div class="form-group"><label class="form-label">Étoiles</label>
-      <div id="cinema-stars-picker" class="stars-picker"></div>
+      <div class="stars-picker" id="cinema-stars-ui"></div>
       <input type="hidden" id="cinema-stars" value="0"/></div>
-    <button class="btn btn-full" onclick="saveMedia('cinema')">Enregistrer</button>
+    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('cinema')">Enregistrer</button>
   </div>
 </div>
 
-<!-- ══════ FAB ══════ -->
-<button class="fab" id="fab" onclick="openAdd()" title="Ajouter">＋</button>
-
-<!-- ══════ MODAL ÉDITION TÂCHE ══════ -->
-<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h3>Modifier la tâche</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="form-stack">
-      <input type="hidden" id="modal-todo-id"/>
-      <div class="form-group"><label class="form-label">Tâche</label>
-        <input id="modal-todo-text" class="input-field" type="text"/></div>
-      <div class="form-group"><label class="form-label">Priorité</label>
-        <select id="modal-todo-priority" class="input-field">
-          <option value="haute">🔴 Haute</option>
-          <option value="moyenne">🟡 Moyenne</option>
-          <option value="basse">🟢 Basse</option>
-        </select></div>
-      <button class="btn btn-full btn-success" onclick="applyTodoEdit()">✓ Sauvegarder</button>
-    </div>
-  </div>
-</div>
-
-<style>
-.stars-picker{display:flex;gap:6px}
-.stars-picker span{font-size:1.5rem;cursor:pointer;color:var(--border);transition:color .15s}
-.stars-picker span.on{color:var(--gold)}
-</style>
+<!-- ══════════════════════════════════
+     BOTTOM NAV
+══════════════════════════════════ -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-todos"     data-hint="Nouvelle tâche"    onclick="navigate('todos')"    onmousedown="startNavPress(this,'todos')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'todos')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">✓</span><span class="ni-label">Tâches</span>
+  </button>
+  <button class="nav-item" id="nav-citations"  data-hint="Nouvelle entrée"   onclick="navigate('citations')" onmousedown="startNavPress(this,'citations')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'citations')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">✦</span><span class="ni-label">Citations</span>
+  </button>
+  <button class="nav-item" id="nav-livres"     data-hint="Nouveau livre"     onclick="navigate('livres')"    onmousedown="startNavPress(this,'livres')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'livres')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">📚</span><span class="ni-label">Livres</span>
+  </button>
+  <button class="nav-item" id="nav-musique"    data-hint="Nouvel album"      onclick="navigate('musique')"   onmousedown="startNavPress(this,'musique')"   onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'musique')"   ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">🎵</span><span class="ni-label">Musique</span>
+  </button>
+  <button class="nav-item" id="nav-cinema"     data-hint="Nouveau film"      onclick="navigate('cinema')"    onmousedown="startNavPress(this,'cinema')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'cinema')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">🎬</span><span class="ni-label">Cinéma</span>
+  </button>
+</nav>
 
 <script>
-// ══════════════════════════════════════
+// ════════════════════════════════
 //  DATA
-// ══════════════════════════════════════
-let todos   = JSON.parse(localStorage.getItem('todos')   || '[]');
-let entries = JSON.parse(localStorage.getItem('entries') || '[]');
-let livres  = JSON.parse(localStorage.getItem('livres')  || '[]');
-let musique = JSON.parse(localStorage.getItem('musique') || '[]');
-let cinema  = JSON.parse(localStorage.getItem('cinema')  || '[]');
+// ════════════════════════════════
+let DB = {
+  todos:     JSON.parse(localStorage.getItem('todos')     || '[]'),
+  citations: JSON.parse(localStorage.getItem('citations') || '[]'),
+  livres:    JSON.parse(localStorage.getItem('livres')    || '[]'),
+  musique:   JSON.parse(localStorage.getItem('musique')   || '[]'),
+  cinema:    JSON.parse(localStorage.getItem('cinema')    || '[]'),
+};
 
-function save(){
-  localStorage.setItem('todos',   JSON.stringify(todos));
-  localStorage.setItem('entries', JSON.stringify(entries));
-  localStorage.setItem('livres',  JSON.stringify(livres));
-  localStorage.setItem('musique', JSON.stringify(musique));
-  localStorage.setItem('cinema',  JSON.stringify(cinema));
-  flash('✓ Sauvegardé');
-}
-function flash(msg){
-  const el=document.getElementById('save-status');
-  el.textContent=msg; clearTimeout(el._t);
-  el._t=setTimeout(()=>el.textContent='',2200);
+function save(key){
+  localStorage.setItem(key, JSON.stringify(DB[key]));
+  const p = document.getElementById('save-pill');
+  p.classList.add('show');
+  clearTimeout(p._t);
+  p._t = setTimeout(()=>p.classList.remove('show'), 2000);
 }
 
-// ══════════════════════════════════════
-//  DRAWER
-// ══════════════════════════════════════
-const TITLES={todos:'Mes Tâches',entries:'Citations & Mots',livres:'Mes Livres',musique:'Ma Musique',cinema:'Mon Cinéma'};
-let currentSection='todos';
-let navStack=[];
-
-function toggleDrawer(){
-  document.getElementById('drawer').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('open');
-  document.getElementById('burger').classList.toggle('open');
-}
-function closeDrawer(){
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
-  document.getElementById('burger').classList.remove('open');
-}
-
-// ══════════════════════════════════════
+// ════════════════════════════════
 //  NAVIGATION
-// ══════════════════════════════════════
+// ════════════════════════════════
+const SECTIONS = {
+  todos:     { icon:'✓',  title:'Mes <em>tâches</em>' },
+  citations: { icon:'✦',  title:'Citations &amp; <em>Mots</em>' },
+  livres:    { icon:'📚', title:'Mes <em>Livres</em>' },
+  musique:   { icon:'🎵', title:'Ma <em>Musique</em>' },
+  cinema:    { icon:'🎬', title:'Mon <em>Cinéma</em>' },
+};
+
+let current = 'todos';
+let navStack = [];
+
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  const el=document.getElementById('screen-'+id);
+  const el = document.getElementById('s-'+id);
   if(el) el.classList.add('active');
-  // Cacher le FAB uniquement sur les formulaires
-  const isForm = id.startsWith('add-');
-  document.getElementById('fab').classList.toggle('hidden', isForm);
-  // Mettre à jour le titre de la topbar
-  if(TITLES[id]) document.getElementById('topbar-title').textContent = TITLES[id];
 }
 
 function navigate(section){
-  currentSection=section; navStack=[];
+  current = section; navStack = [];
   showScreen(section);
-  document.querySelectorAll('.drawer-item').forEach(b=>b.classList.remove('active'));
-  const navEl=document.getElementById('nav-'+section);
-  if(navEl) navEl.classList.add('active');
-  document.getElementById('topbar-title').textContent=TITLES[section]||'';
-  closeDrawer();
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const nb = document.getElementById('nav-'+section);
+  if(nb) nb.classList.add('active');
+  const cfg = SECTIONS[section];
+  document.getElementById('tb-icon').textContent = cfg.icon;
+  document.getElementById('tb-title').innerHTML = cfg.title;
 }
 
-function openAdd(){
-  navStack.push(currentSection);
-  showScreen('add-'+currentSection);
+function openForm(section){
+  navStack.push(current);
+  showScreen(section+'-form');
+  // focus premier champ
+  setTimeout(()=>{
+    const f = document.querySelector('#s-'+section+'-form .input-field:not([type=hidden])');
+    if(f) f.focus();
+  },150);
 }
 
 function goBack(){
-  const prev=navStack.pop()||currentSection;
-  showScreen(prev);
+  const prev = navStack.pop() || current;
+  // si on revient sur une liste, on remet le bon état nav
+  if(SECTIONS[prev]) navigate(prev);
+  else showScreen(prev);
 }
 
-// ══════════════════════════════════════
+// ════════════════════════════════
+//  LONG PRESS — NAV
+// ════════════════════════════════
+let navPressTimer = null;
+let navPressEl    = null;
+
+function startNavPress(el, section){
+  navPressEl = el;
+  el.classList.add('pressing');
+  navPressTimer = setTimeout(()=>{
+    el.classList.remove('pressing');
+    navPressEl = null;
+    if(navigator.vibrate) navigator.vibrate(40);
+    navigate(section);
+    openForm(section);
+    resetForm(section);
+  }, 600);
+}
+function cancelNavPress(){
+  if(navPressTimer){ clearTimeout(navPressTimer); navPressTimer=null; }
+  if(navPressEl){ navPressEl.classList.remove('pressing'); navPressEl=null; }
+}
+
+// ════════════════════════════════
+//  LONG PRESS — CARDS
+// ════════════════════════════════
+let cardPressTimer = null;
+let cardPressEl    = null;
+
+function attachCardPress(card){
+  if(card.dataset.lp) return;
+  card.dataset.lp = '1';
+  const start = e => {
+    if(e.target.closest('button,.check-box')) return;
+    cardPressEl = card;
+    card.classList.add('pressing');
+    cardPressTimer = setTimeout(()=>{
+      card.classList.remove('pressing');
+      cardPressEl = null;
+      if(navigator.vibrate) navigator.vibrate(35);
+      // fermer les autres
+      document.querySelectorAll('.card.open').forEach(c=>{ if(c!==card) c.classList.remove('open'); });
+      card.classList.toggle('open');
+    }, 500);
+  };
+  const cancel = () => {
+    if(cardPressTimer){ clearTimeout(cardPressTimer); cardPressTimer=null; }
+    if(cardPressEl){ cardPressEl.classList.remove('pressing'); cardPressEl=null; }
+  };
+  card.addEventListener('mousedown',   start);
+  card.addEventListener('touchstart',  start, {passive:true});
+  card.addEventListener('mouseup',     cancel);
+  card.addEventListener('mouseleave',  cancel);
+  card.addEventListener('touchend',    cancel);
+  card.addEventListener('touchcancel', cancel);
+  card.addEventListener('contextmenu', e=>e.preventDefault());
+}
+
+// Fermer actions si clic ailleurs
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.card'))
+    document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
+});
+
+// Observer nouveaux cards
+new MutationObserver(()=>{
+  document.querySelectorAll('.card').forEach(attachCardPress);
+}).observe(document.body,{childList:true,subtree:true});
+
+// ════════════════════════════════
 //  STARS PICKER
-// ══════════════════════════════════════
-function buildStarsPicker(pickerId, hiddenId, value=0){
-  const container=document.getElementById(pickerId);
-  if(!container) return;
-  container.innerHTML='';
+// ════════════════════════════════
+function buildStars(uiId, hiddenId, val=0){
+  const ui = document.getElementById(uiId); if(!ui) return;
+  ui.innerHTML = '';
   for(let i=1;i<=5;i++){
-    const s=document.createElement('span');
-    s.textContent='★'; s.dataset.val=i;
-    if(i<=value) s.classList.add('on');
-    s.onclick=()=>{
-      document.getElementById(hiddenId).value=i;
-      container.querySelectorAll('span').forEach((sp,idx)=>sp.classList.toggle('on',idx<i));
+    const b = document.createElement('button');
+    b.className = 'star-btn' + (i<=val?' on':'');
+    b.textContent = '★'; b.type = 'button';
+    b.onclick = ()=>{
+      document.getElementById(hiddenId).value = i;
+      ui.querySelectorAll('.star-btn').forEach((s,idx)=>s.classList.toggle('on',idx<i));
     };
-    container.appendChild(s);
+    ui.appendChild(b);
   }
 }
-function initStarsPickers(){
-  buildStarsPicker('livres-stars-picker','livres-stars',0);
-  buildStarsPicker('musique-stars-picker','musique-stars',0);
-  buildStarsPicker('cinema-stars-picker','cinema-stars',0);
+
+// ════════════════════════════════
+//  UTILS
+// ════════════════════════════════
+function esc(s=''){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid(){ return Date.now() + Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toLocaleDateString('fr-FR'); }
+function starsHtml(n){
+  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'var(--gold)':'var(--border)'};font-size:.9rem">★</span>`).join('');
 }
-initStarsPickers();
 
-// ══════════════════════════════════════
-//  TODO
-// ══════════════════════════════════════
-let todoFilter='all';
+// ════════════════════════════════
+//  TODOS
+// ════════════════════════════════
+let todoFilter = 'all';
 
-function setFilter(f,btn){
-  todoFilter=f;
+function setFilter(f, btn){
+  todoFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); renderTodos();
+  btn.classList.add('active');
+  renderTodos();
+}
+
+function resetForm(section){
+  if(section==='todos'){
+    document.getElementById('todos-edit-id').value = '';
+    document.getElementById('todos-text').value = '';
+    document.getElementById('todos-priority').value = 'moyenne';
+    document.getElementById('todos-form-title').textContent = 'Nouvelle tâche';
+  } else if(section==='citations'){
+    document.getElementById('citations-edit-id').value = '';
+    document.getElementById('cit-text').value = '';
+    document.getElementById('cit-author').value = '';
+    document.getElementById('mot-word').value = '';
+    document.getElementById('mot-def').value = '';
+    document.getElementById('citations-form-title').textContent = 'Nouvelle entrée';
+    setCitType('citation', document.getElementById('type-cit'));
+  } else {
+    document.getElementById(section+'-edit-id').value = '';
+    document.getElementById(section+'-titre').value = '';
+    document.getElementById(section+'-stars').value = '0';
+    buildStars(section+'-stars-ui', section+'-stars', 0);
+    if(section==='livres'){ document.getElementById('livres-auteur').value=''; document.getElementById('livres-statut').value='a-faire'; document.getElementById('livres-note').value=''; }
+    if(section==='musique'){ document.getElementById('musique-artiste').value=''; document.getElementById('musique-genre').value=''; document.getElementById('musique-note').value=''; }
+    if(section==='cinema'){ document.getElementById('cinema-real').value=''; document.getElementById('cinema-type').value='Film'; document.getElementById('cinema-statut').value='a-faire'; document.getElementById('cinema-note').value=''; }
+    const titles={livres:'Nouveau livre',musique:'Nouvel album',cinema:'Nouveau film'};
+    document.getElementById(section+'-form-title').textContent = titles[section];
+  }
 }
 
 function saveTodo(){
-  const text=document.getElementById('todo-input').value.trim();
-  if(!text){document.getElementById('todo-input').focus();return;}
-  const editId=document.getElementById('todo-edit-id').value;
+  const text = document.getElementById('todos-text').value.trim();
+  if(!text){ document.getElementById('todos-text').focus(); return; }
+  const editId = document.getElementById('todos-edit-id').value;
+  const priority = document.getElementById('todos-priority').value;
   if(editId){
-    const t=todos.find(t=>t.id==editId);
-    if(t){t.text=text;t.priority=document.getElementById('todo-priority').value;}
+    const t = DB.todos.find(t=>t.id==editId);
+    if(t){ t.text=text; t.priority=priority; }
   } else {
-    todos.unshift({id:Date.now(),text,priority:document.getElementById('todo-priority').value,done:false,date:new Date().toLocaleDateString('fr-FR')});
+    DB.todos.unshift({id:uid(),text,priority,done:false,date:today()});
   }
-  save(); resetTodoForm(); renderTodos(); goBack();
+  save('todos'); renderTodos(); goBack();
 }
 
-function resetTodoForm(){
-  document.getElementById('todo-input').value='';
-  document.getElementById('todo-priority').value='moyenne';
-  document.getElementById('todo-edit-id').value='';
-  document.getElementById('todo-form-title').textContent='Nouvelle tâche';
-}
-
-function editTodoScreen(id){
-  const t=todos.find(t=>t.id===id); if(!t) return;
-  document.getElementById('todo-edit-id').value=id;
-  document.getElementById('todo-input').value=t.text;
-  document.getElementById('todo-priority').value=t.priority;
-  document.getElementById('todo-form-title').textContent='Modifier la tâche';
-  navStack.push(currentSection);
-  showScreen('add-todo');
-  setTimeout(()=>document.getElementById('todo-input').focus(),100);
+function editTodo(id){
+  const t = DB.todos.find(t=>t.id===id); if(!t) return;
+  document.getElementById('todos-edit-id').value = id;
+  document.getElementById('todos-text').value = t.text;
+  document.getElementById('todos-priority').value = t.priority;
+  document.getElementById('todos-form-title').textContent = 'Modifier la tâche';
+  navStack.push(current);
+  showScreen('todos-form');
 }
 
 function toggleTodo(id){
-  const t=todos.find(t=>t.id===id);
-  if(t){t.done=!t.done;save();renderTodos();}
+  const t = DB.todos.find(t=>t.id===id);
+  if(t){ t.done=!t.done; save('todos'); renderTodos(); }
 }
+
 function deleteTodo(id){
-  if(!confirm('Supprimer cette tâche ?')) return;
-  todos=todos.filter(t=>t.id!==id); save(); renderTodos();
+  if(!confirm('Supprimer ?')) return;
+  DB.todos = DB.todos.filter(t=>t.id!==id);
+  save('todos'); renderTodos();
 }
 
 function renderTodos(){
-  let v=todos;
-  if(todoFilter==='active') v=todos.filter(t=>!t.done);
-  if(todoFilter==='done')   v=todos.filter(t=>t.done);
-  if(['haute','moyenne','basse'].includes(todoFilter)) v=todos.filter(t=>t.priority===todoFilter);
-  document.getElementById('todo-count').textContent=v.length+' tâche'+(v.length!==1?'s':'');
-  const list=document.getElementById('todo-list');
-  if(!v.length){
-    list.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>${todoFilter==='all'?'Appuyez sur <strong>＋</strong> pour ajouter votre première tâche.':'Aucune tâche ici.'}</p></div>`;
-    return;
-  }
+  let v = DB.todos;
+  if(todoFilter==='active') v=v.filter(t=>!t.done);
+  if(todoFilter==='done')   v=v.filter(t=>t.done);
+  if(['haute','moyenne','basse'].includes(todoFilter)) v=v.filter(t=>t.priority===todoFilter);
+  document.getElementById('todos-count').textContent = v.length+' tâche'+(v.length!==1?'s':'');
   const lbl={haute:'Haute',moyenne:'Moyenne',basse:'Basse'};
-  list.innerHTML=v.map(t=>`
-    <div class="card todo-item ${t.done?'done':''}">
-      <div class="todo-check" onclick="toggleTodo(${t.id})">${t.done?'✓':''}</div>
-      <div class="todo-body">
-        <div class="todo-text">${esc(t.text)}</div>
-        <div class="meta-row">
-          <span class="priority-badge priority-${t.priority}">${lbl[t.priority]}</span>
-          <span class="tag">${t.date}</span>
+  const list = document.getElementById('todos-list');
+  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">📋</div><p>Appui long sur <strong>Tâches</strong><br>pour en ajouter une.</p></div>`; return; }
+  list.innerHTML = v.map(t=>`
+    <div class="card">
+      <div class="todo-row ${t.done?'done':''}">
+        <div class="check-box" onclick="toggleTodo('${t.id}')">${t.done?'✓':''}</div>
+        <div class="todo-body">
+          <div class="todo-text">${esc(t.text)}</div>
+          <div class="meta">
+            <span class="badge badge-${t.priority}">${lbl[t.priority]}</span>
+            <span class="tag">${t.date}</span>
+          </div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-        <button class="btn btn-sm btn-edit" onclick="editTodoScreen(${t.id})">✎</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteTodo(${t.id})">✕</button>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-edit" onclick="editTodo('${t.id}')">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTodo('${t.id}')">✕ Supprimer</button>
       </div>
     </div>`).join('');
 }
 
-// Modal (kept as fallback, using screen-based edit instead)
-function closeModal(e){
-  if(e && e.target!==document.getElementById('modal-overlay')) return;
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-function applyTodoEdit(){
-  const id=+document.getElementById('modal-todo-id').value;
-  const t=todos.find(t=>t.id===id); if(!t) return;
-  t.text=document.getElementById('modal-todo-text').value.trim();
-  t.priority=document.getElementById('modal-todo-priority').value;
-  save(); renderTodos();
-  document.getElementById('modal-overlay').classList.remove('open');
-}
+// ════════════════════════════════
+//  CITATIONS & MOTS
+// ════════════════════════════════
+let citType = 'citation';
 
-// ══════════════════════════════════════
-//  ENTRIES (citations & mots)
-// ══════════════════════════════════════
-let entryType='citation';
-
-function setEntryType(type,btn){
-  entryType=type;
+function setCitType(type, btn){
+  citType = type;
   document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('fields-citation').style.display=type==='citation'?'':'none';
-  document.getElementById('fields-mot').style.display=type==='mot'?'':'none';
+  document.getElementById('cit-fields').style.display = type==='citation'?'':'none';
+  document.getElementById('mot-fields').style.display = type==='mot'?'':'none';
 }
 
-function saveEntry(){
-  const editId=document.getElementById('entry-edit-id').value;
+function saveCitation(){
+  const editId = document.getElementById('citations-edit-id').value;
   let entry;
-  if(entryType==='citation'){
-    const text=document.getElementById('entry-text').value.trim();
-    if(!text){document.getElementById('entry-text').focus();return;}
-    entry={id:editId||Date.now(),type:'citation',text,author:document.getElementById('entry-author').value.trim(),date:new Date().toLocaleDateString('fr-FR')};
-    document.getElementById('entry-text').value='';
-    document.getElementById('entry-author').value='';
+  if(citType==='citation'){
+    const text = document.getElementById('cit-text').value.trim();
+    if(!text){ document.getElementById('cit-text').focus(); return; }
+    entry = {id:editId||uid(),type:'citation',text,author:document.getElementById('cit-author').value.trim(),date:today()};
   } else {
-    const mot=document.getElementById('entry-mot').value.trim();
-    const def=document.getElementById('entry-definition').value.trim();
-    if(!mot||!def){document.getElementById(!mot?'entry-mot':'entry-definition').focus();return;}
-    entry={id:editId||Date.now(),type:'mot',mot,definition:def,date:new Date().toLocaleDateString('fr-FR')};
-    document.getElementById('entry-mot').value='';
-    document.getElementById('entry-definition').value='';
+    const word = document.getElementById('mot-word').value.trim();
+    const def  = document.getElementById('mot-def').value.trim();
+    if(!word||!def){ document.getElementById(!word?'mot-word':'mot-def').focus(); return; }
+    entry = {id:editId||uid(),type:'mot',word,def,date:today()};
   }
-  if(editId){
-    const idx=entries.findIndex(e=>e.id==editId);
-    if(idx>-1) entries[idx]=entry;
-  } else {
-    entries.unshift(entry);
-  }
-  document.getElementById('entry-edit-id').value='';
-  document.getElementById('entry-form-title').textContent='Nouvelle entrée';
-  save(); renderEntries(); goBack();
+  if(editId){ const i=DB.citations.findIndex(e=>e.id==editId); if(i>-1) DB.citations[i]=entry; }
+  else DB.citations.unshift(entry);
+  save('citations'); renderCitations(); goBack();
 }
 
-function editEntry(id){
-  const e=entries.find(e=>e.id===id); if(!e) return;
-  document.getElementById('entry-edit-id').value=id;
-  document.getElementById('entry-form-title').textContent='Modifier l\'entrée';
+function editCitation(id){
+  const e = DB.citations.find(e=>e.id===id); if(!e) return;
+  document.getElementById('citations-edit-id').value = id;
+  document.getElementById('citations-form-title').textContent = 'Modifier l\'entrée';
   if(e.type==='citation'){
-    setEntryType('citation',document.getElementById('type-citation'));
-    document.getElementById('entry-text').value=e.text;
-    document.getElementById('entry-author').value=e.author||'';
+    setCitType('citation',document.getElementById('type-cit'));
+    document.getElementById('cit-text').value = e.text;
+    document.getElementById('cit-author').value = e.author||'';
   } else {
-    setEntryType('mot',document.getElementById('type-mot'));
-    document.getElementById('entry-mot').value=e.mot;
-    document.getElementById('entry-definition').value=e.definition;
+    setCitType('mot',document.getElementById('type-mot'));
+    document.getElementById('mot-word').value = e.word;
+    document.getElementById('mot-def').value = e.def;
   }
-  navStack.push(currentSection);
-  showScreen('add-entry');
+  navStack.push(current);
+  showScreen('citations-form');
 }
 
-function deleteEntry(id){
-  if(!confirm('Supprimer cette entrée ?')) return;
-  entries=entries.filter(e=>e.id!==id); save(); renderEntries();
+function deleteCitation(id){
+  if(!confirm('Supprimer ?')) return;
+  DB.citations = DB.citations.filter(e=>e.id!==id);
+  save('citations'); renderCitations();
 }
 
-function renderEntries(search=''){
-  const q=search.toLowerCase();
-  const v=entries.filter(e=>e.type==='citation'
-    ?e.text.toLowerCase().includes(q)||(e.author||'').toLowerCase().includes(q)
-    :e.mot.toLowerCase().includes(q)||e.definition.toLowerCase().includes(q));
-  document.getElementById('entry-count').textContent=v.length+' entrée'+(v.length!==1?'s':'');
-  const list=document.getElementById('entry-list');
-  if(!v.length){
-    list.innerHTML=`<div class="empty-state"><div class="icon">✦</div><p>${!search&&!entries.length?'Appuyez sur <strong>＋</strong> pour ajouter une citation ou un mot.':'Aucun résultat.'}</p></div>`;
-    return;
-  }
-  list.innerHTML=v.map(e=>{
+function renderCitations(search=''){
+  const q = search.toLowerCase();
+  const v = DB.citations.filter(e=>
+    e.type==='citation'
+      ? e.text.toLowerCase().includes(q)||(e.author||'').toLowerCase().includes(q)
+      : e.word.toLowerCase().includes(q)||e.def.toLowerCase().includes(q)
+  );
+  document.getElementById('citations-count').textContent = v.length+' entrée'+(v.length!==1?'s':'');
+  const list = document.getElementById('citations-list');
+  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">✦</div><p>Appui long sur <strong>Citations</strong><br>pour en ajouter une.</p></div>`; return; }
+  list.innerHTML = v.map(e=>{
     if(e.type==='citation') return `
       <div class="card">
-        <span class="entry-type-label type-citation">✦ Citation</span>
-        <div class="entry-title entry-citation">"${esc(e.text)}"</div>
-        ${e.author?`<div class="entry-sub">— ${esc(e.author)}</div>`:''}
-        <div class="btn-row">
-          <span class="tag">${e.date}</span>
-          <button class="btn btn-sm btn-edit" onclick="editEntry(${e.id})">✎ Modifier</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+        <span class="entry-label label-citation">✦ Citation</span>
+        <div class="entry-title entry-italic">"${esc(e.text)}"</div>
+        ${e.author?`<div class="entry-author">— ${esc(e.author)}</div>`:''}
+        <div class="meta"><span class="tag">${e.date}</span></div>
+        <div class="card-actions">
+          <button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕ Supprimer</button>
         </div>
       </div>`;
     return `
       <div class="card">
-        <span class="entry-type-label type-mot">◈ Mot</span>
-        <div class="entry-title">${esc(e.mot)}</div>
-        <div class="entry-def">${esc(e.definition)}</div>
-        <div class="btn-row">
-          <span class="tag">${e.date}</span>
-          <button class="btn btn-sm btn-edit" onclick="editEntry(${e.id})">✎ Modifier</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+        <span class="entry-label label-mot">◈ Mot</span>
+        <div class="entry-title">${esc(e.word)}</div>
+        <div class="entry-def">${esc(e.def)}</div>
+        <div class="meta"><span class="tag">${e.date}</span></div>
+        <div class="card-actions">
+          <button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕ Supprimer</button>
         </div>
       </div>`;
   }).join('');
 }
 
-// ══════════════════════════════════════
+// ════════════════════════════════
 //  MEDIA (livres / musique / cinéma)
-// ══════════════════════════════════════
-const MEDIA_CFG={
-  livres: {
-    icon:'📚', coverIcon:'📖',
-    fields:['titre','auteur','statut','note','stars'],
-    titleField:'titre', subField:'auteur',
-    hasStatut:true, hasStars:true,
-    statusLabels:{'a-faire':'À lire','en-cours':'En cours','lu':'Lu'},
-    statusClasses:{'a-faire':'status-a-faire','en-cours':'status-en-cours','lu':'status-lu'},
-  },
-  musique:{
-    icon:'🎵', coverIcon:'🎵',
-    coverClass:'musique',
-    fields:['titre','arteur','genre','note','stars'],
-    titleField:'titre', subField:'arteur',
-    hasStatut:false, hasStars:true,
-    extraField:'genre',
-  },
-  cinema:{
-    icon:'🎬', coverIcon:'🎬',
-    coverClass:'cinema',
-    fields:['titre','real','type','statut','note','stars'],
-    titleField:'titre', subField:'real',
-    hasStatut:true, hasStars:true,
-    statusLabels:{'a-faire':'À voir','en-cours':'En cours','lu':'Vu'},
-    statusClasses:{'a-faire':'status-a-faire','en-cours':'status-en-cours','lu':'status-lu'},
-    extraField:'type',
-  },
+// ════════════════════════════════
+const MEDIA = {
+  livres:  { icon:'📖', thumb:'📖', statusKey:'statut', statusLabels:{'a-faire':'À lire','en-cours':'En cours','lu':'Lu'}, badgeMap:{'a-faire':'a-faire','en-cours':'en-cours','lu':'lu'} },
+  musique: { icon:'🎵', thumb:'🎵', round:true },
+  cinema:  { icon:'🎬', thumb:'🎬', round:true, statusKey:'statut', statusLabels:{'a-faire':'À voir','en-cours':'En cours','vu':'Vu'}, badgeMap:{'a-faire':'a-faire','en-cours':'en-cours','vu':'vu'} },
 };
 
-function getStore(section){
-  if(section==='livres')  return livres;
-  if(section==='musique') return musique;
-  if(section==='cinema')  return cinema;
-  return [];
-}
-function setStore(section,arr){
-  if(section==='livres')  livres=arr;
-  if(section==='musique') musique=arr;
-  if(section==='cinema')  cinema=arr;
+const mediaFilters = {livres:'all', cinema:'all'};
+
+function setMediaFilter(section, f, btn){
+  mediaFilters[section] = f;
+  btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMedia(section);
 }
 
 function saveMedia(section){
-  const cfg=MEDIA_CFG[section];
-  const titre=document.getElementById(section+'-titre').value.trim();
-  if(!titre){document.getElementById(section+'-titre').focus();return;}
-  const editId=document.getElementById(section+'-edit-id').value;
-  const stars=+document.getElementById(section+'-stars').value||0;
-
-  let item={id:editId||Date.now(),date:new Date().toLocaleDateString('fr-FR'),titre,stars};
+  const titre = document.getElementById(section+'-titre').value.trim();
+  if(!titre){ document.getElementById(section+'-titre').focus(); return; }
+  const editId = document.getElementById(section+'-edit-id').value;
+  const stars = +document.getElementById(section+'-stars').value||0;
+  let item = {id:editId||uid(), titre, stars, date:today()};
   if(section==='livres')  { item.auteur=document.getElementById('livres-auteur').value.trim(); item.statut=document.getElementById('livres-statut').value; item.note=document.getElementById('livres-note').value.trim(); }
-  if(section==='musique') { item.artiste=document.getElementById('musique-arteur').value.trim(); item.genre=document.getElementById('musique-genre').value.trim(); item.note=document.getElementById('musique-note').value.trim(); }
+  if(section==='musique') { item.artiste=document.getElementById('musique-artiste').value.trim(); item.genre=document.getElementById('musique-genre').value.trim(); item.note=document.getElementById('musique-note').value.trim(); }
   if(section==='cinema')  { item.real=document.getElementById('cinema-real').value.trim(); item.type=document.getElementById('cinema-type').value; item.statut=document.getElementById('cinema-statut').value; item.note=document.getElementById('cinema-note').value.trim(); }
-
-  const store=getStore(section);
-  if(editId){
-    const idx=store.findIndex(i=>i.id==editId);
-    if(idx>-1) store[idx]=item; else store.unshift(item);
-  } else { store.unshift(item); }
-  setStore(section,store);
-  resetMediaForm(section);
-  save(); renderMedia(section); goBack();
+  if(editId){ const i=DB[section].findIndex(x=>x.id==editId); if(i>-1) DB[section][i]=item; else DB[section].unshift(item); }
+  else DB[section].unshift(item);
+  save(section); renderMedia(section); goBack();
 }
 
-function resetMediaForm(section){
-  document.getElementById(section+'-edit-id').value='';
-  document.getElementById(section+'-titre').value='';
-  document.getElementById(section+'-stars').value='0';
-  buildStarsPicker(section+'-stars-picker',section+'-stars',0);
-  if(section==='livres') { document.getElementById('livres-auteur').value=''; document.getElementById('livres-statut').value='a-faire'; document.getElementById('livres-note').value=''; }
-  if(section==='musique'){ document.getElementById('musique-arteur').value=''; document.getElementById('musique-genre').value=''; document.getElementById('musique-note').value=''; }
-  if(section==='cinema') { document.getElementById('cinema-real').value=''; document.getElementById('cinema-type').value='Film'; document.getElementById('cinema-statut').value='a-faire'; document.getElementById('cinema-note').value=''; }
-  const titleEl=document.getElementById(section+'-form-title');
-  if(titleEl) titleEl.textContent={livres:'Nouveau livre',musique:'Nouvel album / titre',cinema:'Nouveau film / série'}[section];
+function editMedia(section, id){
+  const item = DB[section].find(x=>x.id===id); if(!item) return;
+  document.getElementById(section+'-edit-id').value = id;
+  document.getElementById(section+'-titre').value = item.titre||'';
+  document.getElementById(section+'-stars').value = item.stars||0;
+  buildStars(section+'-stars-ui', section+'-stars', item.stars||0);
+  if(section==='livres')  { document.getElementById('livres-auteur').value=item.auteur||''; document.getElementById('livres-statut').value=item.statut||'a-faire'; document.getElementById('livres-note').value=item.note||''; }
+  if(section==='musique') { document.getElementById('musique-artiste').value=item.artiste||''; document.getElementById('musique-genre').value=item.genre||''; document.getElementById('musique-note').value=item.note||''; }
+  if(section==='cinema')  { document.getElementById('cinema-real').value=item.real||''; document.getElementById('cinema-type').value=item.type||'Film'; document.getElementById('cinema-statut').value=item.statut||'a-faire'; document.getElementById('cinema-note').value=item.note||''; }
+  const titles={livres:'Modifier le livre',musique:'Modifier l\'album',cinema:'Modifier le film'};
+  document.getElementById(section+'-form-title').textContent = titles[section];
+  navStack.push(current);
+  showScreen(section+'-form');
 }
 
-function editMedia(section,id){
-  const store=getStore(section);
-  const item=store.find(i=>i.id===id); if(!item) return;
-  document.getElementById(section+'-edit-id').value=id;
-  document.getElementById(section+'-titre').value=item.titre||'';
-  document.getElementById(section+'-stars').value=item.stars||0;
-  buildStarsPicker(section+'-stars-picker',section+'-stars',item.stars||0);
-  if(section==='livres') { document.getElementById('livres-auteur').value=item.auteur||''; document.getElementById('livres-statut').value=item.statut||'a-faire'; document.getElementById('livres-note').value=item.note||''; }
-  if(section==='musique'){ document.getElementById('musique-arteur').value=item.artiste||''; document.getElementById('musique-genre').value=item.genre||''; document.getElementById('musique-note').value=item.note||''; }
-  if(section==='cinema') { document.getElementById('cinema-real').value=item.real||''; document.getElementById('cinema-type').value=item.type||'Film'; document.getElementById('cinema-statut').value=item.statut||'a-faire'; document.getElementById('cinema-note').value=item.note||''; }
-  const titleEl=document.getElementById(section+'-form-title');
-  if(titleEl) titleEl.textContent='Modifier';
-  navStack.push(currentSection);
-  showScreen('add-'+section);
+function deleteMedia(section, id){
+  if(!confirm('Supprimer ?')) return;
+  DB[section] = DB[section].filter(x=>x.id!==id);
+  save(section); renderMedia(section);
 }
 
-function deleteMedia(section,id){
-  if(!confirm('Supprimer cet élément ?')) return;
-  setStore(section,getStore(section).filter(i=>i.id!==id));
-  save(); renderMedia(section);
-}
-
-function starsHtml(n){
-  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'var(--gold)':'var(--border)'};font-size:.95rem">★</span>`).join('');
-}
-
-function renderMedia(section,search=''){
-  const cfg=MEDIA_CFG[section];
-  const store=getStore(section);
-  const q=search.toLowerCase();
-  const v=store.filter(i=>(i.titre||'').toLowerCase().includes(q)||(i.auteur||i.artiste||i.real||'').toLowerCase().includes(q));
-  document.getElementById(section+'-count').textContent=v.length+' élément'+(v.length!==1?'s':'');
-  const list=document.getElementById(section+'-list');
-  if(!v.length){
-    const emptyMsg=!search&&!store.length?'Appuyez sur <strong>＋</strong> pour ajouter un élément.':'Aucun résultat.';
-    list.innerHTML=`<div class="empty-state"><div class="icon">${cfg.icon}</div><p>${emptyMsg}</p></div>`;
-    return;
-  }
-  list.innerHTML=v.map(item=>{
-    const sub=item.auteur||item.artiste||item.real||'';
-    const coverClass=cfg.coverClass||'';
-    const statusHtml=item.statut&&cfg.statusLabels?`<span class="status-badge ${cfg.statusClasses[item.statut]}">${cfg.statusLabels[item.statut]}</span>`:'';
-    const extraHtml=item.genre?`<span class="tag">${esc(item.genre)}</span>`:item.type?`<span class="tag">${esc(item.type)}</span>`:'';
+function renderMedia(section, search=''){
+  const cfg = MEDIA[section];
+  const q = search.toLowerCase();
+  let v = DB[section].filter(x=>(x.titre||'').toLowerCase().includes(q)||((x.auteur||x.artiste||x.real)||'').toLowerCase().includes(q));
+  // filtre statut
+  const f = mediaFilters[section];
+  if(f && f!=='all') v = v.filter(x=>x.statut===f);
+  document.getElementById(section+'-count').textContent = v.length+' élément'+(v.length!==1?'s':'');
+  const list = document.getElementById(section+'-list');
+  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">${cfg.icon}</div><p>Appui long sur <strong>${section.charAt(0).toUpperCase()+section.slice(1)}</strong><br>pour en ajouter un.</p></div>`; return; }
+  list.innerHTML = v.map(item=>{
+    const sub = item.auteur||item.artiste||item.real||'';
+    const statusHtml = item.statut&&cfg.statusLabels ? `<span class="badge badge-${cfg.badgeMap[item.statut]}">${cfg.statusLabels[item.statut]}</span>` : '';
+    const extraHtml  = item.genre?`<span class="tag">${esc(item.genre)}</span>`:item.type?`<span class="tag">${esc(item.type)}</span>`:'';
     return `
     <div class="card">
-      <div class="media-card-inner">
-        <div class="media-cover ${coverClass}">${cfg.coverIcon}</div>
-        <div class="media-info">
+      <div class="media-row">
+        <div class="media-thumb ${cfg.round?'round':''}">${cfg.thumb}</div>
+        <div class="media-body">
           <div class="media-title">${esc(item.titre)}</div>
           ${sub?`<div class="media-sub">${esc(sub)}</div>`:''}
-          <div class="meta-row">${statusHtml}${extraHtml}<span class="tag">${item.date}</span></div>
+          <div class="meta">${statusHtml}${extraHtml}<span class="tag">${item.date}</span></div>
           ${item.stars?`<div class="stars">${starsHtml(item.stars)}</div>`:''}
-          ${item.note?`<div class="media-note" style="margin-top:8px">${esc(item.note)}</div>`:''}
+          ${item.note?`<div class="media-note">${esc(item.note)}</div>`:''}
         </div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-sm btn-edit" onclick="editMedia('${section}',${item.id})">✎ Modifier</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteMedia('${section}',${item.id})">✕ Supprimer</button>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-edit" onclick="editMedia('${section}','${item.id}')">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMedia('${section}','${item.id}')">✕ Supprimer</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ══════════════════════════════════════
-//  UTILS
-// ══════════════════════════════════════
-function esc(s=''){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// ════════════════════════════════
+//  INIT STARS PICKERS
+// ════════════════════════════════
+buildStars('livres-stars-ui',  'livres-stars',  0);
+buildStars('musique-stars-ui', 'musique-stars', 0);
+buildStars('cinema-stars-ui',  'cinema-stars',  0);
 
-// ══════════════════════════════════════
-//  LONG PRESS
-// ══════════════════════════════════════
-let pressTimer = null;
-let pressTarget = null;
-
-function startPress(e){
-  const card = e.currentTarget;
-  // ignore si on tape sur un bouton
-  if(e.target.closest('button,.todo-check')) return;
-  card.classList.add('pressing');
-  pressTarget = card;
-  pressTimer = setTimeout(()=>{
-    card.classList.remove('pressing');
-    toggleActions(card);
-    // vibration mobile si dispo
-    if(navigator.vibrate) navigator.vibrate(40);
-  }, 500);
-}
-
-function cancelPress(e){
-  if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; }
-  if(pressTarget){ pressTarget.classList.remove('pressing'); pressTarget=null; }
-}
-
-function toggleActions(card){
-  const isOpen = card.classList.contains('actions-open');
-  // fermer tous les autres
-  document.querySelectorAll('.card.actions-open').forEach(c=>{
-    if(c!==card) c.classList.remove('actions-open');
-  });
-  card.classList.toggle('actions-open', !isOpen);
-}
-
-// Fermer les actions si on clique ailleurs
-document.addEventListener('click', e=>{
-  if(!e.target.closest('.card')) {
-    document.querySelectorAll('.card.actions-open').forEach(c=>c.classList.remove('actions-open'));
-  }
-});
-
-// Attache les listeners sur chaque carte dynamiquement
-function attachLongPress(){
-  document.querySelectorAll('.card').forEach(card=>{
-    // éviter les doublons
-    if(card.dataset.lpAttached) return;
-    card.dataset.lpAttached='1';
-    card.addEventListener('mousedown',  startPress);
-    card.addEventListener('touchstart', startPress, {passive:true});
-    card.addEventListener('mouseup',    cancelPress);
-    card.addEventListener('mouseleave', cancelPress);
-    card.addEventListener('touchend',   cancelPress);
-    card.addEventListener('touchcancel',cancelPress);
-    // empêche menu contextuel mobile
-    card.addEventListener('contextmenu', e=>e.preventDefault());
-  });
-}
-
-// Observer les nouvelles cartes ajoutées dynamiquement
-const lpObserver = new MutationObserver(()=> attachLongPress());
-lpObserver.observe(document.body, {childList:true, subtree:true});
-
-// ══════════════════════════════════════
-//  AUTH UI
-// ══════════════════════════════════════
-function showAuthScreen(){
-  const el = document.getElementById('auth-screen');
-  el.style.display = 'flex';
-  el.style.flexDirection = 'column';
-  el.style.alignItems = 'center';
-  el.style.justifyContent = 'center';
-  // Le FAB est derrière l'overlay, pas besoin de le cacher
-}
-function hideAuthScreen(){
-  // Cacher l'écran auth
-  const el = document.getElementById('auth-screen');
-  el.style.display = 'none';
-  // Afficher l'avatar
-  const av = document.getElementById('auth-avatar');
-  if(av) av.style.display = 'block';
-  // Afficher la bonne section
-  showScreen(currentSection);
-  // Forcer le FAB visible (après showScreen qui peut le cacher)
-  document.getElementById('fab').classList.remove('hidden');
-}
-
-// ══════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════
-// Charge depuis localStorage en attendant Firebase
-todos   = JSON.parse(localStorage.getItem('todos')   || '[]');
-entries = JSON.parse(localStorage.getItem('entries') || '[]');
-livres  = JSON.parse(localStorage.getItem('livres')  || '[]');
-musique = JSON.parse(localStorage.getItem('musique') || '[]');
-cinema  = JSON.parse(localStorage.getItem('cinema')  || '[]');
+// ════════════════════════════════
+//  INIT RENDER
+// ════════════════════════════════
 renderTodos();
-renderEntries();
+renderCitations();
 renderMedia('livres');
 renderMedia('musique');
 renderMedia('cinema');
-// Auth screen géré par onAuthStateChanged Firebase
 </script>
 </body>
 </html>
