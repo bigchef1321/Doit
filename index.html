@@ -4,23 +4,22 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mon Carnet</title>
-<!-- PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Mon Carnet"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#1A1B2E"/>
 <link rel="manifest" href="manifest.json"/>
-
-<!-- Icône écran d'accueil iPhone -->
 <link rel="apple-touch-icon" href="icon.png"/>
-
 <!-- Firebase SDK -->
 <script type="module">
-import { initializeApp }                                        from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-                                                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, onSnapshot }               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink,
+         signInWithEmailLink, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ══════════════════════════════════════
 //  ⚙️  COLLE ICI TA CONFIG FIREBASE
@@ -37,63 +36,86 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
-let unsubscribe = null;
+let unsub  = null;
 
-// ── Login / Logout ─────────────────────────────────
+const ACTION_URL = window.location.origin + window.location.pathname;
+
+// ── Magic Link : vérifie si on revient d'un lien ────
+if (isSignInWithEmailLink(auth, window.location.href)) {
+  let email = localStorage.getItem('emailForSignIn');
+  if (!email) email = window.prompt('Confirme ton adresse email :');
+  if (email) {
+    signInWithEmailLink(auth, email, window.location.href)
+      .then(() => {
+        localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, ACTION_URL);
+      })
+      .catch(e => alert('Erreur : ' + e.message));
+  }
+}
+
+// ── Login : envoie le magic link ────────────────────
 window.fbLogin = async () => {
+  if (auth.currentUser) { window.fbLogout(); return; }
+  const email = prompt('Entre ton adresse email\npour te connecter sur tous tes appareils :');
+  if (!email) return;
   try {
-    await signInWithPopup(auth, new GoogleAuthProvider());
+    await sendSignInLinkToEmail(auth, email, {
+      url: ACTION_URL,
+      handleCodeInApp: true,
+    });
+    localStorage.setItem('emailForSignIn', email);
+    alert('✉️ Lien envoyé à ' + email + '\n\nOuvre ce lien depuis cet appareil pour te connecter.');
   } catch(e) {
-    console.error('Login error:', e.message);
-    alert('Erreur de connexion : ' + e.message);
+    alert('Erreur : ' + e.message);
   }
 };
 
 window.fbLogout = async () => {
-  if(unsubscribe) { unsubscribe(); unsubscribe = null; }
+  if (unsub) { unsub(); unsub = null; }
   await signOut(auth);
 };
 
-// ── Sauvegarde cloud ───────────────────────────────
-window.cloudSave = async (data) => {
-  const user = auth.currentUser;
-  if(!user) return;
-  try {
-    await setDoc(doc(db, 'carnets', user.uid), data, { merge: true });
-  } catch(e) { console.error('Save error:', e.message); }
-};
-
-// ── Écoute état auth ───────────────────────────────
+// ── Écoute connexion ────────────────────────────────
 onAuthStateChanged(auth, user => {
-  if(user) {
-    // Connecté
-    document.getElementById('auth-btn').innerHTML =
-      `<img src="${user.photoURL||''}" style="width:22px;height:22px;border-radius:50%;margin-right:6px;vertical-align:middle;"/>
-       <span style="font-size:.72rem">${user.displayName?.split(' ')[0]||'Moi'}</span>`;
-    document.getElementById('auth-btn').title = 'Se déconnecter';
-    document.getElementById('auth-btn').onclick = fbLogout;
-    document.getElementById('sync-indicator').textContent = '☁';
-    document.getElementById('sync-indicator').title = 'Synchronisé';
+  const btn = document.getElementById('sync-btn');
+  if (!btn) return;
+  if (user) {
+    btn.innerHTML = '☁ ' + (user.email?.split('@')[0] || 'Connecté');
+    btn.title = 'Connecté — cliquer pour se déconnecter';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
 
     // Écoute temps réel Firestore
-    if(unsubscribe) unsubscribe();
-    unsubscribe = onSnapshot(doc(db, 'carnets', user.uid), snap => {
-      if(!snap.exists()) return;
+    if (unsub) unsub();
+    unsub = onSnapshot(doc(db, 'carnets', user.uid), snap => {
+      if (!snap.exists()) return;
       const d = snap.data();
-      if(d.todos)     { window.DB.todos     = d.todos;     renderTodos(); }
-      if(d.citations) { window.DB.citations = d.citations; renderCitations(); }
-      if(d.livres)    { window.DB.livres    = d.livres;    renderMedia('livres'); }
-      if(d.musique)   { window.DB.musique   = d.musique;   renderMedia('musique'); }
-      if(d.cinema)    { window.DB.cinema    = d.cinema;    renderMedia('cinema'); }
+      // Ne remplace que si les données cloud sont plus récentes
+      if (d.todos)     { window.DB.todos     = d.todos;     window.renderTodos(); }
+      if (d.citations) { window.DB.citations = d.citations; window.renderCitations(); }
+      if (d.livres)    { window.DB.livres    = d.livres;    window.renderLivres(); }
+      if (d.medias)    { window.DB.medias    = d.medias;    window.renderMedias(); }
+      if (d.divers)    { window.DB.divers    = d.divers;    window.renderDivers(); }
     });
   } else {
-    // Déconnecté
-    document.getElementById('auth-btn').innerHTML = `<span style="font-size:.75rem">☁ Sync</span>`;
-    document.getElementById('auth-btn').title = 'Se connecter pour synchroniser';
-    document.getElementById('auth-btn').onclick = fbLogin;
-    document.getElementById('sync-indicator').textContent = '';
+    btn.innerHTML = '☁ Sync';
+    btn.title = 'Se connecter pour synchroniser sur tous les appareils';
+    btn.style.borderColor = '';
+    btn.style.color = '';
   }
 });
+
+// ── Sauvegarde cloud ────────────────────────────────
+window.cloudSave = async (data) => {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    await setDoc(doc(db, 'carnets', user.uid), data, { merge: true });
+  } catch(e) {
+    console.error('Cloud save error:', e.message);
+  }
+};
 </script>
 
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -102,7 +124,7 @@ onAuthStateChanged(auth, user => {
 :root{
   --bg:#1A1B2E;--surface:#23253A;--surface2:#2D2F4A;--border:#3A3C58;
   --violet:#7C6FCD;--violet-lt:#A99EE0;--gold:#D4AF6A;--cream:#F0EDE8;
-  --muted:#8A8BA8;--danger:#E07C7C;--success:#6CC68A;--warn:#D4AF6A;
+  --muted:#8A8BA8;--danger:#E07C7C;--success:#6CC68A;
   --radius:12px;--radius-sm:7px;--shadow:0 4px 28px rgba(0,0,0,.4);--tr:.2s ease;
 }
 body{background:var(--bg);color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
@@ -111,132 +133,123 @@ body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(ellipse 60% 40% at 80% 90%,rgba(212,175,106,.05) 0%,transparent 60%);
   pointer-events:none;z-index:0}
 
-/* ── SCREENS ── */
-.screen{display:none;position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 16px calc(100px + env(safe-area-inset-bottom));animation:fadeUp .25s ease both}
+.screen{display:none;position:relative;z-index:1;max-width:720px;margin:0 auto;
+  padding:0 16px calc(100px + env(safe-area-inset-bottom));animation:fadeUp .25s ease both}
 .screen.active{display:block}
+.form-screen{animation:slideUp .28s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── TOP BAR ── */
-.topbar{
-  position:sticky;top:0;z-index:200;
-  background:rgba(26,27,46,.95);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;
-  padding-top:max(14px, env(safe-area-inset-top));
-}
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:200;background:rgba(26,27,46,.95);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
+  padding:max(14px,env(safe-area-inset-top)) 18px 14px;}
 .topbar-left{display:flex;align-items:center;gap:10px}
-.topbar-icon{font-size:1.3rem}
-.topbar-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--cream)}
+.topbar-icon{font-size:1.25rem}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700}
 .topbar-title em{font-style:italic;color:var(--violet-lt)}
-.save-pill{font-size:.7rem;color:var(--success);background:rgba(108,198,138,.12);border:1px solid rgba(108,198,138,.25);border-radius:20px;padding:3px 10px;opacity:0;transition:opacity .3s}
+.save-pill{font-size:.7rem;color:var(--success);background:rgba(108,198,138,.12);
+  border:1px solid rgba(108,198,138,.25);border-radius:20px;padding:3px 10px;
+  opacity:0;transition:opacity .3s}
 .save-pill.show{opacity:1}
+.sync-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;
+  color:var(--cream);cursor:pointer;padding:5px 12px;font-family:'Inter',sans-serif;
+  font-size:.72rem;display:flex;align-items:center;gap:6px;transition:border-color .2s;white-space:nowrap}
+.sync-btn:hover{border-color:var(--violet)}
 
-/* ── BOTTOM NAV ── */
-.bottom-nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:100;
-  background:rgba(26,27,46,.97);backdrop-filter:blur(16px);
-  border-top:1px solid var(--border);
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(26,27,46,.97);backdrop-filter:blur(16px);border-top:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-around;
-  padding:8px 0;
-  padding-bottom:max(18px, env(safe-area-inset-bottom));
-}
-.nav-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  background:none;border:none;cursor:pointer;
-  padding:6px 14px;border-radius:12px;
-  transition:background var(--tr);
-  user-select:none;-webkit-user-select:none;
-  position:relative;
-}
-.nav-item .ni-icon{font-size:1.4rem;transition:transform .2s}
-.nav-item .ni-label{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:500;color:var(--muted);transition:color var(--tr)}
+  padding:8px 0 max(18px,env(safe-area-inset-bottom));}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;padding:6px 10px;border-radius:12px;
+  transition:background var(--tr);user-select:none;-webkit-user-select:none;position:relative;}
+.nav-item .ni-icon{font-size:1.3rem;transition:transform .2s}
+.nav-item .ni-label{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:500;color:var(--muted);transition:color var(--tr)}
 .nav-item.active .ni-label{color:var(--violet-lt)}
 .nav-item.active .ni-icon{transform:scale(1.12)}
-/* Anneau actif */
-.nav-item.active::after{
-  content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
-  width:24px;height:2px;background:var(--violet);border-radius:2px 2px 0 0;
-}
-/* Effet appui long */
+.nav-item.active::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+  width:20px;height:2px;background:var(--violet);border-radius:2px 2px 0 0;}
 .nav-item.pressing{background:rgba(124,111,205,.15)}
-.nav-item.pressing .ni-icon{transform:scale(0.9)}
-/* Tooltip appui long */
-.nav-item::before{
-  content:attr(data-hint);
-  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
-  background:var(--violet);color:#fff;font-size:.72rem;font-family:'Inter',sans-serif;
-  padding:5px 10px;border-radius:8px;white-space:nowrap;
-  opacity:0;pointer-events:none;transition:opacity .2s;
-}
+.nav-item::before{content:attr(data-hint);position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);background:var(--violet);color:#fff;font-size:.7rem;
+  font-family:'Inter',sans-serif;padding:4px 10px;border-radius:8px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;}
 .nav-item.pressing::before{opacity:1}
 
-/* ── FORM SCREEN (slide depuis le bas) ── */
-.screen.form-screen{animation:slideUp .3s ease both}
-@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── PAGE HEADER ── */
-.page-header{padding:22px 0 14px;display:flex;align-items:center;justify-content:space-between}
-.page-header h1{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,5vw,2rem);font-weight:700;line-height:1.2}
+/* PAGE HEADER */
+.page-header{padding:20px 0 14px;display:flex;align-items:center;justify-content:space-between}
+.page-header h1{font-family:'Playfair Display',serif;font-size:clamp(1.4rem,5vw,1.9rem);font-weight:700;line-height:1.2}
 .page-header h1 em{font-style:italic;color:var(--violet-lt)}
-.page-header h2{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;flex:1}
-.back-btn{
-  background:var(--surface);border:1px solid var(--border);border-radius:50%;
+.page-header h2{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;flex:1}
+.back-btn{background:var(--surface);border:1px solid var(--border);border-radius:50%;
   color:var(--muted);cursor:pointer;width:38px;height:38px;
   display:flex;align-items:center;justify-content:center;font-size:1rem;
-  flex-shrink:0;margin-right:12px;transition:all var(--tr);
-}
+  flex-shrink:0;margin-right:12px;transition:all var(--tr);}
 .back-btn:hover{border-color:var(--violet);color:var(--cream)}
+.count-badge{font-size:.72rem;color:var(--muted);background:var(--surface2);
+  border:1px solid var(--border);border-radius:20px;padding:3px 10px}
 
-/* ── CARDS ── */
-.card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;
-  transition:box-shadow var(--tr),border-color var(--tr);
-  position:relative;user-select:none;-webkit-user-select:none;
-}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;margin-bottom:10px;transition:box-shadow var(--tr),border-color var(--tr);
+  position:relative;user-select:none;-webkit-user-select:none;}
 .card:hover{box-shadow:var(--shadow)}
 .card.pressing{border-color:var(--violet);box-shadow:0 0 0 2px rgba(124,111,205,.25)}
-/* Actions cachées */
-.card-actions{
-  display:flex;gap:8px;justify-content:flex-end;
-  overflow:hidden;max-height:0;opacity:0;
+.card-actions{display:flex;gap:8px;justify-content:flex-end;overflow:hidden;max-height:0;opacity:0;
   transition:max-height .3s ease,opacity .25s ease,margin-top .25s,padding-top .25s;
-  margin-top:0;padding-top:0;border-top:none;
-}
-.card.open .card-actions{
-  max-height:50px;opacity:1;
-  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
-}
-/* hint ··· */
-.card:not(.open)::after{
-  content:'···';position:absolute;bottom:8px;right:12px;
-  font-size:.75rem;color:var(--border);pointer-events:none;
-  letter-spacing:2px;
-}
+  margin-top:0;padding-top:0;border-top:none;}
+.card.open .card-actions{max-height:50px;opacity:1;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.card:not(.open)::after{content:'···';position:absolute;bottom:8px;right:12px;
+  font-size:.75rem;color:var(--border);pointer-events:none;letter-spacing:2px;}
 
-/* ── FORMS ── */
+/* FORMS */
 .form-stack{display:flex;flex-direction:column;gap:13px}
 .form-group{display:flex;flex-direction:column;gap:6px}
 .form-label{font-size:.72rem;font-weight:600;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
-.input-field{
-  width:100%;background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--radius-sm);color:var(--cream);
-  font-family:'Inter',sans-serif;font-size:.92rem;padding:12px 14px;outline:none;
-  transition:border-color var(--tr);
-}
+.form-label span{font-weight:400;text-transform:none;color:var(--muted)}
+.input-field{width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--cream);font-family:'Inter',sans-serif;
+  font-size:.92rem;padding:12px 14px;outline:none;transition:border-color var(--tr);}
 .input-field::placeholder{color:var(--muted)}
 .input-field:focus{border-color:var(--violet)}
 select.input-field{cursor:pointer}
 textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
 
-/* ── BUTTONS ── */
-.btn{
-  background:var(--violet);border:none;border-radius:var(--radius-sm);
+/* PHOTO UPLOAD */
+.photo-upload-area{
+  border:2px dashed var(--border);border-radius:var(--radius);
+  padding:20px;text-align:center;cursor:pointer;transition:all var(--tr);
+  background:var(--surface2);position:relative;overflow:hidden;
+}
+.photo-upload-area:hover{border-color:var(--violet);background:rgba(124,111,205,.08)}
+.photo-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-upload-area .upload-icon{font-size:2rem;margin-bottom:6px;opacity:.6}
+.photo-upload-area p{font-size:.82rem;color:var(--muted)}
+.photo-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.photo-preview-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.photo-preview-item img{width:100%;height:100%;object-fit:cover}
+.photo-remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);
+  border:none;border-radius:50%;color:#fff;cursor:pointer;width:20px;height:20px;
+  font-size:.7rem;display:flex;align-items:center;justify-content:center;}
+/* Photos dans les cards */
+.card-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.card-photo{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;
+  border:1px solid var(--border);cursor:pointer;}
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;
+  display:none;align-items:center;justify-content:center;}
+.lightbox.open{display:flex}
+.lightbox img{max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain}
+.lightbox-close{position:absolute;top:20px;right:20px;background:none;border:none;
+  color:#fff;font-size:1.8rem;cursor:pointer;}
+
+/* BUTTONS */
+.btn{background:var(--violet);border:none;border-radius:var(--radius-sm);
   color:#fff;cursor:pointer;font-family:'Inter',sans-serif;
   font-size:.88rem;font-weight:600;padding:11px 20px;
-  transition:background var(--tr),transform .1s;white-space:nowrap;
-}
+  transition:background var(--tr),transform .1s;white-space:nowrap;}
 .btn:hover{background:var(--violet-lt)}
 .btn:active{transform:scale(.97)}
 .btn-full{width:100%;padding:13px}
@@ -245,62 +258,51 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
 .btn-danger:hover{background:var(--danger);color:#fff}
 .btn-edit{background:rgba(124,111,205,.12);border:1px solid var(--violet);color:var(--violet-lt)}
 .btn-edit:hover{background:var(--violet);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--violet);color:var(--cream);background:transparent}
 
-/* ── BADGES ── */
-.badge{font-size:.67rem;font-weight:600;border-radius:4px;padding:2px 7px;letter-spacing:.3px}
+/* BADGES */
+.badge{font-size:.67rem;font-weight:600;border-radius:4px;padding:2px 7px}
 .badge-haute{background:rgba(224,124,124,.18);color:var(--danger)}
 .badge-moyenne{background:rgba(212,175,106,.18);color:var(--gold)}
 .badge-basse{background:rgba(108,198,138,.18);color:var(--success)}
 .badge-a-faire{background:rgba(138,139,168,.18);color:var(--muted)}
 .badge-en-cours{background:rgba(212,175,106,.18);color:var(--gold)}
-.badge-fait{background:rgba(108,198,138,.18);color:var(--success)}
-.badge-lu{background:rgba(108,198,138,.18);color:var(--success)}
-.badge-vu{background:rgba(108,198,138,.18);color:var(--success)}
-.badge-type{background:rgba(124,111,205,.15);color:var(--violet-lt)}
+.badge-fait,.badge-lu,.badge-vu{background:rgba(108,198,138,.18);color:var(--success)}
 .tag{font-size:.67rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--muted)}
 .meta{display:flex;gap:7px;align-items:center;margin-top:7px;flex-wrap:wrap}
 
-/* ── SECTION BADGE (header) ── */
-.count-badge{font-size:.73rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
-
-/* ── FILTER BAR ── */
-.filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-.filter-btn{
-  background:transparent;border:1px solid var(--border);border-radius:20px;
+/* FILTER + SEARCH */
+.filter-bar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.filter-btn{background:transparent;border:1px solid var(--border);border-radius:20px;
   color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
-  font-size:.75rem;padding:4px 12px;transition:all var(--tr);
-}
+  font-size:.75rem;padding:4px 12px;transition:all var(--tr);}
 .filter-btn:hover,.filter-btn.active{background:var(--surface2);border-color:var(--violet);color:var(--cream)}
-
-/* ── SEARCH ── */
-.search-wrap{position:relative;margin-bottom:16px}
+.search-wrap{position:relative;margin-bottom:14px}
 .search-wrap .input-field{padding-left:36px}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
 
-/* ── TODO ── */
+/* TODO */
 .todo-row{display:flex;align-items:flex-start;gap:12px}
-.check-box{
-  flex-shrink:0;width:22px;height:22px;border:2px solid var(--border);
+.check-box{flex-shrink:0;width:22px;height:22px;border:2px solid var(--border);
   border-radius:6px;background:var(--surface2);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  margin-top:1px;font-size:12px;color:transparent;transition:all var(--tr);
-}
+  margin-top:1px;font-size:12px;color:transparent;transition:all var(--tr);}
 .todo-row.done .check-box{background:var(--success);border-color:var(--success);color:#fff}
 .todo-row.done .todo-text{text-decoration:line-through;color:var(--muted)}
 .todo-body{flex:1;min-width:0}
 .todo-text{font-size:.93rem;line-height:1.5}
 
-/* ── TYPE TOGGLE ── */
+/* TYPE TOGGLE */
 .type-toggle{display:flex;gap:8px}
-.type-btn{
-  flex:1;background:var(--surface2);border:1px solid var(--border);
+.type-btn{flex:1;background:var(--surface2);border:1px solid var(--border);
   border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;
-  font-family:'Inter',sans-serif;font-size:.83rem;padding:9px;transition:all var(--tr);
-}
+  font-family:'Inter',sans-serif;font-size:.83rem;padding:9px;transition:all var(--tr);}
 .type-btn.active{background:rgba(124,111,205,.18);border-color:var(--violet);color:var(--violet-lt)}
 
-/* ── ENTRIES ── */
-.entry-label{font-size:.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+/* ENTRIES */
+.entry-label{font-size:.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
 .label-citation{background:rgba(212,175,106,.15);color:var(--gold)}
 .label-mot{background:rgba(124,111,205,.15);color:var(--violet-lt)}
 .entry-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;line-height:1.35;margin-bottom:5px}
@@ -308,31 +310,49 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
 .entry-author{font-size:.82rem;color:var(--gold);margin-bottom:6px}
 .entry-def{font-size:.88rem;line-height:1.7;color:#cac8e4}
 
-/* ── MEDIA ── */
+/* MEDIA */
 .media-row{display:flex;gap:14px;align-items:flex-start}
-.media-thumb{
-  flex-shrink:0;width:52px;height:68px;border-radius:8px;
+.media-thumb{flex-shrink:0;width:56px;height:72px;border-radius:8px;
   background:var(--surface2);border:1px solid var(--border);
-  display:flex;align-items:center;justify-content:center;font-size:1.5rem;
-}
-.media-thumb.round{border-radius:50%;height:52px;width:52px}
+  display:flex;align-items:center;justify-content:center;font-size:1.5rem;overflow:hidden;}
+.media-thumb img{width:100%;height:100%;object-fit:cover}
 .media-body{flex:1;min-width:0}
 .media-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;line-height:1.3;margin-bottom:2px}
-.media-sub{font-size:.8rem;color:var(--gold);margin-bottom:5px}
+.media-sub{font-size:.8rem;color:var(--gold);margin-bottom:4px}
 .media-note{font-size:.85rem;line-height:1.6;color:#cac8e4;margin-top:6px}
-.stars{font-size:.95rem;letter-spacing:1px;margin-top:3px}
+.stars{font-size:.9rem;letter-spacing:1px;margin-top:3px}
 
-/* ── STARS PICKER ── */
+/* STARS */
 .stars-picker{display:flex;gap:8px}
 .star-btn{font-size:1.4rem;cursor:pointer;color:var(--border);transition:color .15s;background:none;border:none;padding:0}
 .star-btn.on{color:var(--gold)}
 
-/* ── EMPTY STATE ── */
-.empty{text-align:center;padding:52px 20px;color:var(--muted)}
+/* DIVERS */
+.rubrique-list{display:grid;gap:10px}
+.rubrique-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:14px;}
+.rubrique-card:hover{border-color:var(--violet);box-shadow:var(--shadow)}
+.rubrique-icon{font-size:1.6rem;flex-shrink:0}
+.rubrique-info{flex:1}
+.rubrique-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;margin-bottom:2px}
+.rubrique-count{font-size:.75rem;color:var(--muted)}
+.add-rubrique-btn{border:2px dashed var(--border);background:transparent;border-radius:var(--radius);
+  padding:16px;width:100%;color:var(--muted);font-family:'Inter',sans-serif;
+  font-size:.88rem;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:8px;}
+.add-rubrique-btn:hover{border-color:var(--violet);color:var(--violet-lt)}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
 .empty .e-icon{font-size:2.4rem;margin-bottom:12px;opacity:.5}
 .empty p{font-size:.88rem;line-height:1.7}
 
-/* ── SCROLLBAR ── */
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;
+  display:none;align-items:center;justify-content:center;}
+.lightbox.open{display:flex}
+.lightbox img{max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain}
+.lightbox-close{position:absolute;top:20px;right:20px;background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer}
+
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -340,29 +360,27 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt=""/>
+</div>
+
+<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-left">
     <span class="topbar-icon" id="tb-icon">✓</span>
     <span class="topbar-title" id="tb-title">Mes <em>tâches</em></span>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="display:flex;align-items:center;gap:8px">
     <span class="save-pill" id="save-pill">✓ Sauvegardé</span>
-    <span id="sync-indicator" style="color:var(--success);font-size:1rem" title=""></span>
-    <button id="auth-btn" onclick="window.fbLogin&&fbLogin()" style="
-      background:var(--surface2);border:1px solid var(--border);border-radius:20px;
-      color:var(--cream);cursor:pointer;padding:5px 12px;
-      font-family:'Inter',sans-serif;display:flex;align-items:center;
-      transition:border-color .2s;white-space:nowrap;
-    " onmouseover="this.style.borderColor='var(--violet)'" onmouseout="this.style.borderColor='var(--border)'">
-      <span style="font-size:.75rem">☁ Sync</span>
-    </button>
+    <button class="sync-btn" id="sync-btn" onclick="window.fbLogin&&fbLogin()">☁ Sync</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════
-     TODOS — liste
-══════════════════════════════════ -->
+<!-- ═══════════════════════════════
+     TÂCHES — liste
+═══════════════════════════════ -->
 <div id="s-todos" class="screen active">
   <div class="page-header">
     <h1>Mes <em>tâches</em></h1>
@@ -379,7 +397,7 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
   <div id="todos-list"></div>
 </div>
 
-<!-- TODOS — formulaire -->
+<!-- TÂCHES — formulaire -->
 <div id="s-todos-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
@@ -399,13 +417,22 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
         <option value="basse">🟢 Basse</option>
       </select>
     </div>
+    <div class="form-group">
+      <label class="form-label">Photos / Fichiers <span>(facultatif)</span></label>
+      <div class="photo-upload-area" id="todos-upload-area">
+        <input type="file" id="todos-files" accept="image/*" multiple onchange="handlePhotos('todos',this)"/>
+        <div class="upload-icon">📎</div>
+        <p>Appuyer pour ajouter une photo ou un fichier</p>
+      </div>
+      <div class="photo-preview-grid" id="todos-preview"></div>
+    </div>
     <button class="btn btn-full" style="margin-top:4px" onclick="saveTodo()">Enregistrer</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════
+<!-- ═══════════════════════════════
      CITATIONS — liste
-══════════════════════════════════ -->
+═══════════════════════════════ -->
 <div id="s-citations" class="screen">
   <div class="page-header">
     <h1>Citations &amp; <em>Mots</em></h1>
@@ -436,7 +463,7 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
     <div id="cit-fields" class="form-stack">
       <div class="form-group"><label class="form-label">Citation</label>
         <textarea id="cit-text" class="input-field" placeholder="Entrez la citation…"></textarea></div>
-      <div class="form-group"><label class="form-label">Auteur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+      <div class="form-group"><label class="form-label">Auteur <span>(facultatif)</span></label>
         <input id="cit-author" class="input-field" type="text" placeholder="Nom de l'auteur…"/></div>
     </div>
     <div id="mot-fields" class="form-stack" style="display:none">
@@ -445,13 +472,13 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
       <div class="form-group"><label class="form-label">Définition</label>
         <textarea id="mot-def" class="input-field" placeholder="Entrez la définition…"></textarea></div>
     </div>
-    <button class="btn btn-full" style="margin-top:4px" onclick="saveCitation()">Enregistrer</button>
+    <button class="btn btn-full" onclick="saveCitation()">Enregistrer</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════
+<!-- ═══════════════════════════════
      LIVRES — liste
-══════════════════════════════════ -->
+═══════════════════════════════ -->
 <div id="s-livres" class="screen">
   <div class="page-header">
     <h1>Mes <em>Livres</em></h1>
@@ -465,7 +492,7 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('livres',this.value)"/>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderLivres(this.value)"/>
   </div>
   <div id="livres-list"></div>
 </div>
@@ -488,125 +515,165 @@ textarea.input-field{min-height:88px;resize:vertical;line-height:1.6}
         <option value="en-cours">⏳ En cours</option>
         <option value="lu">✅ Lu</option>
       </select></div>
-    <div class="form-group"><label class="form-label">Note / avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
+    <div class="form-group"><label class="form-label">Couverture / Photo <span>(facultatif)</span></label>
+      <div class="photo-upload-area" id="livres-upload-area">
+        <input type="file" id="livres-files" accept="image/*" multiple onchange="handlePhotos('livres',this)"/>
+        <div class="upload-icon">📸</div>
+        <p>Ajouter la couverture ou des photos</p>
+      </div>
+      <div class="photo-preview-grid" id="livres-preview"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Note / avis <span>(facultatif)</span></label>
       <textarea id="livres-note" class="input-field" placeholder="Votre avis…"></textarea></div>
     <div class="form-group"><label class="form-label">Étoiles</label>
       <div class="stars-picker" id="livres-stars-ui"></div>
       <input type="hidden" id="livres-stars" value="0"/></div>
-    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('livres')">Enregistrer</button>
+    <button class="btn btn-full" onclick="saveLivre()">Enregistrer</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════
-     MUSIQUE — liste
-══════════════════════════════════ -->
-<div id="s-musique" class="screen">
+<!-- ═══════════════════════════════
+     MÉDIAS (musique+cinéma) — liste
+═══════════════════════════════ -->
+<div id="s-medias" class="screen">
   <div class="page-header">
-    <h1>Ma <em>Musique</em></h1>
-    <span id="musique-count" class="count-badge">0</span>
-  </div>
-  <div class="search-wrap">
-    <span class="search-icon">⌕</span>
-    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('musique',this.value)"/>
-  </div>
-  <div id="musique-list"></div>
-</div>
-
-<!-- MUSIQUE — formulaire -->
-<div id="s-musique-form" class="screen form-screen">
-  <div class="page-header">
-    <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="musique-form-title">Nouvel album</h2>
-  </div>
-  <div class="form-stack">
-    <input type="hidden" id="musique-edit-id"/>
-    <div class="form-group"><label class="form-label">Titre / Album</label>
-      <input id="musique-titre" class="input-field" type="text" placeholder="Nom de l'album ou du titre"/></div>
-    <div class="form-group"><label class="form-label">Artiste</label>
-      <input id="musique-artiste" class="input-field" type="text" placeholder="Nom de l'artiste"/></div>
-    <div class="form-group"><label class="form-label">Genre <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
-      <input id="musique-genre" class="input-field" type="text" placeholder="Jazz, Rock, Classique…"/></div>
-    <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
-      <textarea id="musique-note" class="input-field" placeholder="Ce que vous en pensez…"></textarea></div>
-    <div class="form-group"><label class="form-label">Étoiles</label>
-      <div class="stars-picker" id="musique-stars-ui"></div>
-      <input type="hidden" id="musique-stars" value="0"/></div>
-    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('musique')">Enregistrer</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════
-     CINÉMA — liste
-══════════════════════════════════ -->
-<div id="s-cinema" class="screen">
-  <div class="page-header">
-    <h1>Mon <em>Cinéma</em></h1>
-    <span id="cinema-count" class="count-badge">0</span>
+    <h1>Mes <em>Médias</em></h1>
+    <span id="medias-count" class="count-badge">0</span>
   </div>
   <div class="filter-bar">
-    <button class="filter-btn active" onclick="setMediaFilter('cinema','all',this)">Tous</button>
-    <button class="filter-btn" onclick="setMediaFilter('cinema','a-faire',this)">🍿 À voir</button>
-    <button class="filter-btn" onclick="setMediaFilter('cinema','en-cours',this)">⏳ En cours</button>
-    <button class="filter-btn" onclick="setMediaFilter('cinema','vu',this)">✅ Vus</button>
+    <button class="filter-btn active" onclick="setMediasFilter('all',this)">Tous</button>
+    <button class="filter-btn" onclick="setMediasFilter('Musique',this)">🎵 Musique</button>
+    <button class="filter-btn" onclick="setMediasFilter('Film',this)">🎬 Film</button>
+    <button class="filter-btn" onclick="setMediasFilter('Série',this)">📺 Série</button>
+    <button class="filter-btn" onclick="setMediasFilter('Documentaire',this)">🎥 Docu</button>
+    <button class="filter-btn" onclick="setMediasFilter('Podcast',this)">🎙 Podcast</button>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedia('cinema',this.value)"/>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderMedias(this.value)"/>
   </div>
-  <div id="cinema-list"></div>
+  <div id="medias-list"></div>
 </div>
 
-<!-- CINÉMA — formulaire -->
-<div id="s-cinema-form" class="screen form-screen">
+<!-- MÉDIAS — formulaire -->
+<div id="s-medias-form" class="screen form-screen">
   <div class="page-header">
     <button class="back-btn" onclick="goBack()">←</button>
-    <h2 id="cinema-form-title">Nouveau film</h2>
+    <h2 id="medias-form-title">Nouveau média</h2>
   </div>
   <div class="form-stack">
-    <input type="hidden" id="cinema-edit-id"/>
-    <div class="form-group"><label class="form-label">Titre</label>
-      <input id="cinema-titre" class="input-field" type="text" placeholder="Titre du film ou de la série"/></div>
-    <div class="form-group"><label class="form-label">Réalisateur <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
-      <input id="cinema-real" class="input-field" type="text" placeholder="Nom du réalisateur"/></div>
+    <input type="hidden" id="medias-edit-id"/>
     <div class="form-group"><label class="form-label">Type</label>
-      <select id="cinema-type" class="input-field">
+      <select id="medias-type" class="input-field" onchange="updateMediaIcon()">
+        <option value="Musique">🎵 Musique</option>
         <option value="Film">🎬 Film</option>
         <option value="Série">📺 Série</option>
         <option value="Documentaire">🎥 Documentaire</option>
+        <option value="Podcast">🎙 Podcast</option>
       </select></div>
+    <div class="form-group"><label class="form-label">Titre</label>
+      <input id="medias-titre" class="input-field" type="text" placeholder="Titre…"/></div>
+    <div class="form-group"><label class="form-label">Artiste / Réalisateur <span>(facultatif)</span></label>
+      <input id="medias-auteur" class="input-field" type="text" placeholder="Nom…"/></div>
     <div class="form-group"><label class="form-label">Statut</label>
-      <select id="cinema-statut" class="input-field">
-        <option value="a-faire">🍿 À voir</option>
-        <option value="en-cours">⏳ En cours</option>
-        <option value="vu">✅ Vu</option>
+      <select id="medias-statut" class="input-field">
+        <option value="a-faire">À voir / écouter</option>
+        <option value="en-cours">En cours</option>
+        <option value="vu">Vu / écouté ✅</option>
       </select></div>
-    <div class="form-group"><label class="form-label">Avis <span style="font-weight:400;text-transform:none;color:var(--muted)">(facultatif)</span></label>
-      <textarea id="cinema-note" class="input-field" placeholder="Votre avis…"></textarea></div>
+    <div class="form-group"><label class="form-label">Avis <span>(facultatif)</span></label>
+      <textarea id="medias-note" class="input-field" placeholder="Ce que vous en pensez…"></textarea></div>
     <div class="form-group"><label class="form-label">Étoiles</label>
-      <div class="stars-picker" id="cinema-stars-ui"></div>
-      <input type="hidden" id="cinema-stars" value="0"/></div>
-    <button class="btn btn-full" style="margin-top:4px" onclick="saveMedia('cinema')">Enregistrer</button>
+      <div class="stars-picker" id="medias-stars-ui"></div>
+      <input type="hidden" id="medias-stars" value="0"/></div>
+    <button class="btn btn-full" onclick="saveMedia()">Enregistrer</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════
+<!-- ═══════════════════════════════
+     DIVERS — liste des rubriques
+═══════════════════════════════ -->
+<div id="s-divers" class="screen">
+  <div class="page-header">
+    <h1>Mes <em>Divers</em></h1>
+    <span id="divers-count" class="count-badge">0</span>
+  </div>
+  <div id="divers-rubriques"></div>
+</div>
+
+<!-- DIVERS — contenu d'une rubrique -->
+<div id="s-divers-rubrique" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="navigate('divers')">←</button>
+    <h2 id="divers-rubrique-title">Rubrique</h2>
+    <span id="divers-rubrique-count" class="count-badge">0</span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="input-field" type="text" placeholder="Rechercher…" oninput="renderDiversItems(currentRubrique,this.value)"/>
+  </div>
+  <div id="divers-items-list"></div>
+  <div style="height:16px"></div>
+  <button class="btn btn-full btn-outline" onclick="openDiversItemForm()">+ Ajouter un élément</button>
+</div>
+
+<!-- DIVERS — formulaire nouvel item -->
+<div id="s-divers-item-form" class="screen form-screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="showScreen('divers-rubrique')">←</button>
+    <h2 id="divers-item-form-title">Nouvel élément</h2>
+  </div>
+  <div class="form-stack">
+    <input type="hidden" id="divers-item-edit-id"/>
+    <div class="form-group"><label class="form-label">Titre</label>
+      <input id="divers-item-titre" class="input-field" type="text" placeholder="Titre…"/></div>
+    <div class="form-group"><label class="form-label">Description <span>(facultatif)</span></label>
+      <textarea id="divers-item-desc" class="input-field" placeholder="Description ou note…"></textarea></div>
+    <div class="form-group"><label class="form-label">Photo <span>(facultatif)</span></label>
+      <div class="photo-upload-area">
+        <input type="file" id="divers-item-files" accept="image/*" multiple onchange="handlePhotos('divers-item',this)"/>
+        <div class="upload-icon">📸</div>
+        <p>Ajouter une photo</p>
+      </div>
+      <div class="photo-preview-grid" id="divers-item-preview"></div>
+    </div>
+    <button class="btn btn-full" onclick="saveDiversItem()">Enregistrer</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
      BOTTOM NAV
-══════════════════════════════════ -->
+═══════════════════════════════ -->
 <nav class="bottom-nav">
-  <button class="nav-item active" id="nav-todos"     data-hint="Nouvelle tâche"    onclick="navigate('todos')"    onmousedown="startNavPress(this,'todos')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'todos')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+  <button class="nav-item active" id="nav-todos" data-hint="Nouvelle tâche"
+    onclick="navigate('todos')"
+    onmousedown="startNavPress(this,'todos')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()"
+    ontouchstart="startNavPress(this,'todos')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
     <span class="ni-icon">✓</span><span class="ni-label">Tâches</span>
   </button>
-  <button class="nav-item" id="nav-citations"  data-hint="Nouvelle entrée"   onclick="navigate('citations')" onmousedown="startNavPress(this,'citations')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'citations')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+  <button class="nav-item" id="nav-citations" data-hint="Nouvelle entrée"
+    onclick="navigate('citations')"
+    onmousedown="startNavPress(this,'citations')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()"
+    ontouchstart="startNavPress(this,'citations')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
     <span class="ni-icon">✦</span><span class="ni-label">Citations</span>
   </button>
-  <button class="nav-item" id="nav-livres"     data-hint="Nouveau livre"     onclick="navigate('livres')"    onmousedown="startNavPress(this,'livres')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'livres')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+  <button class="nav-item" id="nav-livres" data-hint="Nouveau livre"
+    onclick="navigate('livres')"
+    onmousedown="startNavPress(this,'livres')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()"
+    ontouchstart="startNavPress(this,'livres')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
     <span class="ni-icon">📚</span><span class="ni-label">Livres</span>
   </button>
-  <button class="nav-item" id="nav-musique"    data-hint="Nouvel album"      onclick="navigate('musique')"   onmousedown="startNavPress(this,'musique')"   onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'musique')"   ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
-    <span class="ni-icon">🎵</span><span class="ni-label">Musique</span>
+  <button class="nav-item" id="nav-medias" data-hint="Nouveau média"
+    onclick="navigate('medias')"
+    onmousedown="startNavPress(this,'medias')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()"
+    ontouchstart="startNavPress(this,'medias')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">🎬</span><span class="ni-label">Médias</span>
   </button>
-  <button class="nav-item" id="nav-cinema"     data-hint="Nouveau film"      onclick="navigate('cinema')"    onmousedown="startNavPress(this,'cinema')"    onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()" ontouchstart="startNavPress(this,'cinema')"    ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
-    <span class="ni-icon">🎬</span><span class="ni-label">Cinéma</span>
+  <button class="nav-item" id="nav-divers" data-hint="Nouvelle rubrique"
+    onclick="navigate('divers')"
+    onmousedown="startNavPress(this,'divers')" onmouseup="cancelNavPress()" onmouseleave="cancelNavPress()"
+    ontouchstart="startNavPress(this,'divers')" ontouchend="cancelNavPress()" ontouchcancel="cancelNavPress()">
+    <span class="ni-icon">📂</span><span class="ni-label">Divers</span>
   </button>
 </nav>
 
@@ -618,22 +685,68 @@ let DB = {
   todos:     JSON.parse(localStorage.getItem('todos')     || '[]'),
   citations: JSON.parse(localStorage.getItem('citations') || '[]'),
   livres:    JSON.parse(localStorage.getItem('livres')    || '[]'),
-  musique:   JSON.parse(localStorage.getItem('musique')   || '[]'),
-  cinema:    JSON.parse(localStorage.getItem('cinema')    || '[]'),
+  medias:    JSON.parse(localStorage.getItem('medias')    || '[]'),
+  divers:    JSON.parse(localStorage.getItem('divers')    || '[]'), // [{id,name,icon,items:[]}]
 };
 
+// Buffers photos temporaires (base64)
+let photoBuffers = { todos:[], livres:[], 'divers-item':[] };
+
 function save(key){
-  // Sauvegarde locale
   localStorage.setItem(key, JSON.stringify(DB[key]));
-  // Sauvegarde cloud (si connecté)
-  if(window.cloudSave) {
-    window.cloudSave({ [key]: DB[key] });
-  }
-  // Feedback visuel
+  if(window.cloudSave) window.cloudSave({[key]: DB[key]});
   const p = document.getElementById('save-pill');
-  p.classList.add('show');
-  clearTimeout(p._t);
+  p.classList.add('show'); clearTimeout(p._t);
   p._t = setTimeout(()=>p.classList.remove('show'), 2000);
+}
+
+// ════════════════════════════════
+//  PHOTOS
+// ════════════════════════════════
+function handlePhotos(section, input){
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      photoBuffers[section].push({ name: file.name, data: e.target.result });
+      renderPhotoPreview(section);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotoPreview(section){
+  const grid = document.getElementById(section+'-preview');
+  if(!grid) return;
+  grid.innerHTML = photoBuffers[section].map((p,i) => `
+    <div class="photo-preview-item">
+      <img src="${p.data}" alt="${p.name}"/>
+      <button class="photo-remove" onclick="removePhoto('${section}',${i})">✕</button>
+    </div>`).join('');
+}
+
+function removePhoto(section, idx){
+  photoBuffers[section].splice(idx,1);
+  renderPhotoPreview(section);
+}
+
+function clearPhotos(section){
+  photoBuffers[section] = [];
+  renderPhotoPreview(section);
+}
+
+function loadPhotosForEdit(section, photos){
+  photoBuffers[section] = photos ? [...photos] : [];
+  renderPhotoPreview(section);
+}
+
+function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+function photosHtml(photos){
+  if(!photos||!photos.length) return '';
+  return `<div class="card-photos">${photos.map(p=>`<img class="card-photo" src="${p.data}" alt="${p.name}" onclick="openLightbox('${p.data}')">`).join('')}</div>`;
 }
 
 // ════════════════════════════════
@@ -643,12 +756,13 @@ const SECTIONS = {
   todos:     { icon:'✓',  title:'Mes <em>tâches</em>' },
   citations: { icon:'✦',  title:'Citations &amp; <em>Mots</em>' },
   livres:    { icon:'📚', title:'Mes <em>Livres</em>' },
-  musique:   { icon:'🎵', title:'Ma <em>Musique</em>' },
-  cinema:    { icon:'🎬', title:'Mon <em>Cinéma</em>' },
+  medias:    { icon:'🎬', title:'Mes <em>Médias</em>' },
+  divers:    { icon:'📂', title:'Mes <em>Divers</em>' },
 };
 
 let current = 'todos';
 let navStack = [];
+let currentRubrique = null;
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -663,23 +777,18 @@ function navigate(section){
   const nb = document.getElementById('nav-'+section);
   if(nb) nb.classList.add('active');
   const cfg = SECTIONS[section];
-  document.getElementById('tb-icon').textContent = cfg.icon;
-  document.getElementById('tb-title').innerHTML = cfg.title;
+  if(cfg){ document.getElementById('tb-icon').textContent=cfg.icon; document.getElementById('tb-title').innerHTML=cfg.title; }
 }
 
 function openForm(section){
+  resetForm(section);
   navStack.push(current);
   showScreen(section+'-form');
-  // focus premier champ
-  setTimeout(()=>{
-    const f = document.querySelector('#s-'+section+'-form .input-field:not([type=hidden])');
-    if(f) f.focus();
-  },150);
+  setTimeout(()=>{ const f=document.querySelector('#s-'+section+'-form .input-field:not([type=hidden])'); if(f) f.focus(); },150);
 }
 
 function goBack(){
   const prev = navStack.pop() || current;
-  // si on revient sur une liste, on remet le bon état nav
   if(SECTIONS[prev]) navigate(prev);
   else showScreen(prev);
 }
@@ -687,19 +796,14 @@ function goBack(){
 // ════════════════════════════════
 //  LONG PRESS — NAV
 // ════════════════════════════════
-let navPressTimer = null;
-let navPressEl    = null;
-
+let navPressTimer=null, navPressEl=null;
 function startNavPress(el, section){
-  navPressEl = el;
-  el.classList.add('pressing');
+  navPressEl=el; el.classList.add('pressing');
   navPressTimer = setTimeout(()=>{
-    el.classList.remove('pressing');
-    navPressEl = null;
+    el.classList.remove('pressing'); navPressEl=null;
     if(navigator.vibrate) navigator.vibrate(40);
-    navigate(section);
-    openForm(section);
-    resetForm(section);
+    if(section==='divers'){ navigate('divers'); openNewRubriquePrompt(); }
+    else { navigate(section); openForm(section); }
   }, 600);
 }
 function cancelNavPress(){
@@ -710,172 +814,145 @@ function cancelNavPress(){
 // ════════════════════════════════
 //  LONG PRESS — CARDS
 // ════════════════════════════════
-let cardPressTimer = null;
-let cardPressEl    = null;
-
+let cPressTimer=null, cPressEl=null;
 function attachCardPress(card){
-  if(card.dataset.lp) return;
-  card.dataset.lp = '1';
+  if(card.dataset.lp) return; card.dataset.lp='1';
   const start = e => {
-    if(e.target.closest('button,.check-box')) return;
-    cardPressEl = card;
-    card.classList.add('pressing');
-    cardPressTimer = setTimeout(()=>{
-      card.classList.remove('pressing');
-      cardPressEl = null;
+    if(e.target.closest('button,.check-box,.card-photo')) return;
+    cPressEl=card; card.classList.add('pressing');
+    cPressTimer = setTimeout(()=>{
+      card.classList.remove('pressing'); cPressEl=null;
       if(navigator.vibrate) navigator.vibrate(35);
-      // fermer les autres
       document.querySelectorAll('.card.open').forEach(c=>{ if(c!==card) c.classList.remove('open'); });
       card.classList.toggle('open');
-    }, 500);
+    },500);
   };
-  const cancel = () => {
-    if(cardPressTimer){ clearTimeout(cardPressTimer); cardPressTimer=null; }
-    if(cardPressEl){ cardPressEl.classList.remove('pressing'); cardPressEl=null; }
-  };
-  card.addEventListener('mousedown',   start);
-  card.addEventListener('touchstart',  start, {passive:true});
-  card.addEventListener('mouseup',     cancel);
-  card.addEventListener('mouseleave',  cancel);
-  card.addEventListener('touchend',    cancel);
-  card.addEventListener('touchcancel', cancel);
-  card.addEventListener('contextmenu', e=>e.preventDefault());
+  const cancel = ()=>{ clearTimeout(cPressTimer); if(cPressEl){cPressEl.classList.remove('pressing'); cPressEl=null;} };
+  card.addEventListener('mousedown',start);
+  card.addEventListener('touchstart',start,{passive:true});
+  card.addEventListener('mouseup',cancel);
+  card.addEventListener('mouseleave',cancel);
+  card.addEventListener('touchend',cancel);
+  card.addEventListener('touchcancel',cancel);
+  card.addEventListener('contextmenu',e=>e.preventDefault());
 }
-
-// Fermer actions si clic ailleurs
-document.addEventListener('click', e=>{
-  if(!e.target.closest('.card'))
-    document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
-});
-
-// Observer nouveaux cards
-new MutationObserver(()=>{
-  document.querySelectorAll('.card').forEach(attachCardPress);
-}).observe(document.body,{childList:true,subtree:true});
+document.addEventListener('click',e=>{ if(!e.target.closest('.card')) document.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open')); });
+new MutationObserver(()=>document.querySelectorAll('.card').forEach(attachCardPress)).observe(document.body,{childList:true,subtree:true});
 
 // ════════════════════════════════
-//  STARS PICKER
+//  STARS
 // ════════════════════════════════
 function buildStars(uiId, hiddenId, val=0){
-  const ui = document.getElementById(uiId); if(!ui) return;
-  ui.innerHTML = '';
+  const ui=document.getElementById(uiId); if(!ui) return;
+  ui.innerHTML='';
   for(let i=1;i<=5;i++){
-    const b = document.createElement('button');
-    b.className = 'star-btn' + (i<=val?' on':'');
-    b.textContent = '★'; b.type = 'button';
-    b.onclick = ()=>{
-      document.getElementById(hiddenId).value = i;
-      ui.querySelectorAll('.star-btn').forEach((s,idx)=>s.classList.toggle('on',idx<i));
-    };
+    const b=document.createElement('button');
+    b.className='star-btn'+(i<=val?' on':''); b.textContent='★'; b.type='button';
+    b.onclick=()=>{ document.getElementById(hiddenId).value=i; ui.querySelectorAll('.star-btn').forEach((s,idx)=>s.classList.toggle('on',idx<i)); };
     ui.appendChild(b);
   }
 }
+function starsHtml(n){ return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'var(--gold)':'var(--border)'};font-size:.9rem">★</span>`).join(''); }
 
 // ════════════════════════════════
 //  UTILS
 // ════════════════════════════════
 function esc(s=''){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function uid(){ return Date.now() + Math.random().toString(36).slice(2,6); }
+function uid(){ return Date.now()+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toLocaleDateString('fr-FR'); }
-function starsHtml(n){
-  return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'var(--gold)':'var(--border)'};font-size:.9rem">★</span>`).join('');
+
+// ════════════════════════════════
+//  RESET FORMS
+// ════════════════════════════════
+function resetForm(section){
+  if(section==='todos'){
+    document.getElementById('todos-edit-id').value='';
+    document.getElementById('todos-text').value='';
+    document.getElementById('todos-priority').value='moyenne';
+    document.getElementById('todos-form-title').textContent='Nouvelle tâche';
+    clearPhotos('todos');
+  } else if(section==='citations'){
+    document.getElementById('citations-edit-id').value='';
+    document.getElementById('cit-text').value=''; document.getElementById('cit-author').value='';
+    document.getElementById('mot-word').value=''; document.getElementById('mot-def').value='';
+    document.getElementById('citations-form-title').textContent='Nouvelle entrée';
+    setCitType('citation',document.getElementById('type-cit'));
+  } else if(section==='livres'){
+    document.getElementById('livres-edit-id').value='';
+    document.getElementById('livres-titre').value=''; document.getElementById('livres-auteur').value='';
+    document.getElementById('livres-statut').value='a-faire'; document.getElementById('livres-note').value='';
+    document.getElementById('livres-stars').value='0'; buildStars('livres-stars-ui','livres-stars',0);
+    document.getElementById('livres-form-title').textContent='Nouveau livre';
+    clearPhotos('livres');
+  } else if(section==='medias'){
+    document.getElementById('medias-edit-id').value='';
+    document.getElementById('medias-type').value='Musique'; document.getElementById('medias-titre').value='';
+    document.getElementById('medias-auteur').value=''; document.getElementById('medias-statut').value='a-faire';
+    document.getElementById('medias-note').value=''; document.getElementById('medias-stars').value='0';
+    buildStars('medias-stars-ui','medias-stars',0);
+    document.getElementById('medias-form-title').textContent='Nouveau média';
+  }
 }
 
 // ════════════════════════════════
 //  TODOS
 // ════════════════════════════════
-let todoFilter = 'all';
-
-function setFilter(f, btn){
-  todoFilter = f;
+let todoFilter='all';
+function setFilter(f,btn){
+  todoFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTodos();
-}
-
-function resetForm(section){
-  if(section==='todos'){
-    document.getElementById('todos-edit-id').value = '';
-    document.getElementById('todos-text').value = '';
-    document.getElementById('todos-priority').value = 'moyenne';
-    document.getElementById('todos-form-title').textContent = 'Nouvelle tâche';
-  } else if(section==='citations'){
-    document.getElementById('citations-edit-id').value = '';
-    document.getElementById('cit-text').value = '';
-    document.getElementById('cit-author').value = '';
-    document.getElementById('mot-word').value = '';
-    document.getElementById('mot-def').value = '';
-    document.getElementById('citations-form-title').textContent = 'Nouvelle entrée';
-    setCitType('citation', document.getElementById('type-cit'));
-  } else {
-    document.getElementById(section+'-edit-id').value = '';
-    document.getElementById(section+'-titre').value = '';
-    document.getElementById(section+'-stars').value = '0';
-    buildStars(section+'-stars-ui', section+'-stars', 0);
-    if(section==='livres'){ document.getElementById('livres-auteur').value=''; document.getElementById('livres-statut').value='a-faire'; document.getElementById('livres-note').value=''; }
-    if(section==='musique'){ document.getElementById('musique-artiste').value=''; document.getElementById('musique-genre').value=''; document.getElementById('musique-note').value=''; }
-    if(section==='cinema'){ document.getElementById('cinema-real').value=''; document.getElementById('cinema-type').value='Film'; document.getElementById('cinema-statut').value='a-faire'; document.getElementById('cinema-note').value=''; }
-    const titles={livres:'Nouveau livre',musique:'Nouvel album',cinema:'Nouveau film'};
-    document.getElementById(section+'-form-title').textContent = titles[section];
-  }
+  btn.classList.add('active'); renderTodos();
 }
 
 function saveTodo(){
-  const text = document.getElementById('todos-text').value.trim();
-  if(!text){ document.getElementById('todos-text').focus(); return; }
-  const editId = document.getElementById('todos-edit-id').value;
-  const priority = document.getElementById('todos-priority').value;
-  if(editId){
-    const t = DB.todos.find(t=>t.id==editId);
-    if(t){ t.text=text; t.priority=priority; }
-  } else {
-    DB.todos.unshift({id:uid(),text,priority,done:false,date:today()});
-  }
+  const text=document.getElementById('todos-text').value.trim();
+  if(!text){document.getElementById('todos-text').focus();return;}
+  const editId=document.getElementById('todos-edit-id').value;
+  const photos=[...photoBuffers['todos']];
+  const item={id:editId||uid(),text,priority:document.getElementById('todos-priority').value,done:false,date:today(),photos};
+  if(editId){ const i=DB.todos.findIndex(t=>t.id==editId); if(i>-1){DB.todos[i]=item;DB.todos[i].done=DB.todos[i].done||false;} }
+  else DB.todos.unshift(item);
   save('todos'); renderTodos(); goBack();
 }
 
 function editTodo(id){
-  const t = DB.todos.find(t=>t.id===id); if(!t) return;
-  document.getElementById('todos-edit-id').value = id;
-  document.getElementById('todos-text').value = t.text;
-  document.getElementById('todos-priority').value = t.priority;
-  document.getElementById('todos-form-title').textContent = 'Modifier la tâche';
-  navStack.push(current);
-  showScreen('todos-form');
+  const t=DB.todos.find(t=>t.id===id); if(!t) return;
+  document.getElementById('todos-edit-id').value=id;
+  document.getElementById('todos-text').value=t.text;
+  document.getElementById('todos-priority').value=t.priority;
+  document.getElementById('todos-form-title').textContent='Modifier la tâche';
+  loadPhotosForEdit('todos',t.photos);
+  navStack.push(current); showScreen('todos-form');
 }
 
 function toggleTodo(id){
-  const t = DB.todos.find(t=>t.id===id);
-  if(t){ t.done=!t.done; save('todos'); renderTodos(); }
+  const t=DB.todos.find(t=>t.id===id);
+  if(t){t.done=!t.done;save('todos');renderTodos();}
 }
-
 function deleteTodo(id){
   if(!confirm('Supprimer ?')) return;
-  DB.todos = DB.todos.filter(t=>t.id!==id);
-  save('todos'); renderTodos();
+  DB.todos=DB.todos.filter(t=>t.id!==id);save('todos');renderTodos();
 }
 
 function renderTodos(){
-  let v = DB.todos;
+  let v=DB.todos;
   if(todoFilter==='active') v=v.filter(t=>!t.done);
-  if(todoFilter==='done')   v=v.filter(t=>t.done);
+  if(todoFilter==='done') v=v.filter(t=>t.done);
   if(['haute','moyenne','basse'].includes(todoFilter)) v=v.filter(t=>t.priority===todoFilter);
-  document.getElementById('todos-count').textContent = v.length+' tâche'+(v.length!==1?'s':'');
+  document.getElementById('todos-count').textContent=v.length+' tâche'+(v.length!==1?'s':'');
   const lbl={haute:'Haute',moyenne:'Moyenne',basse:'Basse'};
-  const list = document.getElementById('todos-list');
-  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">📋</div><p>Appui long sur <strong>Tâches</strong><br>pour en ajouter une.</p></div>`; return; }
-  list.innerHTML = v.map(t=>`
+  const list=document.getElementById('todos-list');
+  if(!v.length){list.innerHTML=`<div class="empty"><div class="e-icon">📋</div><p>Appui long sur <strong>Tâches</strong><br>pour en ajouter une.</p></div>`;return;}
+  list.innerHTML=v.map(t=>`
     <div class="card">
       <div class="todo-row ${t.done?'done':''}">
         <div class="check-box" onclick="toggleTodo('${t.id}')">${t.done?'✓':''}</div>
         <div class="todo-body">
           <div class="todo-text">${esc(t.text)}</div>
-          <div class="meta">
-            <span class="badge badge-${t.priority}">${lbl[t.priority]}</span>
-            <span class="tag">${t.date}</span>
-          </div>
+          <div class="meta"><span class="badge badge-${t.priority}">${lbl[t.priority]}</span><span class="tag">${t.date}</span></div>
         </div>
       </div>
+      ${photosHtml(t.photos)}
       <div class="card-actions">
         <button class="btn btn-sm btn-edit" onclick="editTodo('${t.id}')">✎ Modifier</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTodo('${t.id}')">✕ Supprimer</button>
@@ -884,203 +961,315 @@ function renderTodos(){
 }
 
 // ════════════════════════════════
-//  CITATIONS & MOTS
+//  CITATIONS
 // ════════════════════════════════
-let citType = 'citation';
-
-function setCitType(type, btn){
-  citType = type;
+let citType='citation';
+function setCitType(type,btn){
+  citType=type;
   document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('cit-fields').style.display = type==='citation'?'':'none';
-  document.getElementById('mot-fields').style.display = type==='mot'?'':'none';
+  document.getElementById('cit-fields').style.display=type==='citation'?'':'none';
+  document.getElementById('mot-fields').style.display=type==='mot'?'':'none';
 }
-
 function saveCitation(){
-  const editId = document.getElementById('citations-edit-id').value;
+  const editId=document.getElementById('citations-edit-id').value;
   let entry;
   if(citType==='citation'){
-    const text = document.getElementById('cit-text').value.trim();
-    if(!text){ document.getElementById('cit-text').focus(); return; }
-    entry = {id:editId||uid(),type:'citation',text,author:document.getElementById('cit-author').value.trim(),date:today()};
+    const text=document.getElementById('cit-text').value.trim();
+    if(!text){document.getElementById('cit-text').focus();return;}
+    entry={id:editId||uid(),type:'citation',text,author:document.getElementById('cit-author').value.trim(),date:today()};
   } else {
-    const word = document.getElementById('mot-word').value.trim();
-    const def  = document.getElementById('mot-def').value.trim();
-    if(!word||!def){ document.getElementById(!word?'mot-word':'mot-def').focus(); return; }
-    entry = {id:editId||uid(),type:'mot',word,def,date:today()};
+    const word=document.getElementById('mot-word').value.trim();
+    const def=document.getElementById('mot-def').value.trim();
+    if(!word||!def){document.getElementById(!word?'mot-word':'mot-def').focus();return;}
+    entry={id:editId||uid(),type:'mot',word,def,date:today()};
   }
-  if(editId){ const i=DB.citations.findIndex(e=>e.id==editId); if(i>-1) DB.citations[i]=entry; }
+  if(editId){const i=DB.citations.findIndex(e=>e.id==editId);if(i>-1)DB.citations[i]=entry;}
   else DB.citations.unshift(entry);
-  save('citations'); renderCitations(); goBack();
+  save('citations');renderCitations();goBack();
 }
-
 function editCitation(id){
-  const e = DB.citations.find(e=>e.id===id); if(!e) return;
-  document.getElementById('citations-edit-id').value = id;
-  document.getElementById('citations-form-title').textContent = 'Modifier l\'entrée';
-  if(e.type==='citation'){
-    setCitType('citation',document.getElementById('type-cit'));
-    document.getElementById('cit-text').value = e.text;
-    document.getElementById('cit-author').value = e.author||'';
-  } else {
-    setCitType('mot',document.getElementById('type-mot'));
-    document.getElementById('mot-word').value = e.word;
-    document.getElementById('mot-def').value = e.def;
-  }
-  navStack.push(current);
-  showScreen('citations-form');
+  const e=DB.citations.find(e=>e.id===id);if(!e)return;
+  document.getElementById('citations-edit-id').value=id;
+  document.getElementById('citations-form-title').textContent='Modifier l\'entrée';
+  if(e.type==='citation'){setCitType('citation',document.getElementById('type-cit'));document.getElementById('cit-text').value=e.text;document.getElementById('cit-author').value=e.author||'';}
+  else{setCitType('mot',document.getElementById('type-mot'));document.getElementById('mot-word').value=e.word;document.getElementById('mot-def').value=e.def;}
+  navStack.push(current);showScreen('citations-form');
 }
-
 function deleteCitation(id){
-  if(!confirm('Supprimer ?')) return;
-  DB.citations = DB.citations.filter(e=>e.id!==id);
-  save('citations'); renderCitations();
+  if(!confirm('Supprimer ?'))return;
+  DB.citations=DB.citations.filter(e=>e.id!==id);save('citations');renderCitations();
 }
-
 function renderCitations(search=''){
-  const q = search.toLowerCase();
-  const v = DB.citations.filter(e=>
-    e.type==='citation'
-      ? e.text.toLowerCase().includes(q)||(e.author||'').toLowerCase().includes(q)
-      : e.word.toLowerCase().includes(q)||e.def.toLowerCase().includes(q)
-  );
-  document.getElementById('citations-count').textContent = v.length+' entrée'+(v.length!==1?'s':'');
-  const list = document.getElementById('citations-list');
-  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">✦</div><p>Appui long sur <strong>Citations</strong><br>pour en ajouter une.</p></div>`; return; }
-  list.innerHTML = v.map(e=>{
-    if(e.type==='citation') return `
-      <div class="card">
-        <span class="entry-label label-citation">✦ Citation</span>
-        <div class="entry-title entry-italic">"${esc(e.text)}"</div>
-        ${e.author?`<div class="entry-author">— ${esc(e.author)}</div>`:''}
-        <div class="meta"><span class="tag">${e.date}</span></div>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕ Supprimer</button>
-        </div>
-      </div>`;
-    return `
-      <div class="card">
-        <span class="entry-label label-mot">◈ Mot</span>
-        <div class="entry-title">${esc(e.word)}</div>
-        <div class="entry-def">${esc(e.def)}</div>
-        <div class="meta"><span class="tag">${e.date}</span></div>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕ Supprimer</button>
-        </div>
-      </div>`;
+  const q=search.toLowerCase();
+  const v=DB.citations.filter(e=>e.type==='citation'?e.text.toLowerCase().includes(q)||(e.author||'').toLowerCase().includes(q):e.word.toLowerCase().includes(q)||e.def.toLowerCase().includes(q));
+  document.getElementById('citations-count').textContent=v.length+' entrée'+(v.length!==1?'s':'');
+  const list=document.getElementById('citations-list');
+  if(!v.length){list.innerHTML=`<div class="empty"><div class="e-icon">✦</div><p>Appui long sur <strong>Citations</strong><br>pour en ajouter une.</p></div>`;return;}
+  list.innerHTML=v.map(e=>{
+    if(e.type==='citation')return`<div class="card"><span class="entry-label label-citation">✦ Citation</span><div class="entry-title entry-italic">"${esc(e.text)}"</div>${e.author?`<div class="entry-author">— ${esc(e.author)}</div>`:''}<div class="meta"><span class="tag">${e.date}</span></div><div class="card-actions"><button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button><button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕</button></div></div>`;
+    return`<div class="card"><span class="entry-label label-mot">◈ Mot</span><div class="entry-title">${esc(e.word)}</div><div class="entry-def">${esc(e.def)}</div><div class="meta"><span class="tag">${e.date}</span></div><div class="card-actions"><button class="btn btn-sm btn-edit" onclick="editCitation('${e.id}')">✎ Modifier</button><button class="btn btn-sm btn-danger" onclick="deleteCitation('${e.id}')">✕</button></div></div>`;
   }).join('');
 }
 
 // ════════════════════════════════
-//  MEDIA (livres / musique / cinéma)
+//  LIVRES
 // ════════════════════════════════
-const MEDIA = {
-  livres:  { icon:'📖', thumb:'📖', statusKey:'statut', statusLabels:{'a-faire':'À lire','en-cours':'En cours','lu':'Lu'}, badgeMap:{'a-faire':'a-faire','en-cours':'en-cours','lu':'lu'} },
-  musique: { icon:'🎵', thumb:'🎵', round:true },
-  cinema:  { icon:'🎬', thumb:'🎬', round:true, statusKey:'statut', statusLabels:{'a-faire':'À voir','en-cours':'En cours','vu':'Vu'}, badgeMap:{'a-faire':'a-faire','en-cours':'en-cours','vu':'vu'} },
-};
-
-const mediaFilters = {livres:'all', cinema:'all'};
-
-function setMediaFilter(section, f, btn){
-  mediaFilters[section] = f;
+let livresFilter='all';
+function setMediaFilter(sec,f,btn){
+  livresFilter=f;
   btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderMedia(section);
+  btn.classList.add('active');renderLivres();
 }
-
-function saveMedia(section){
-  const titre = document.getElementById(section+'-titre').value.trim();
-  if(!titre){ document.getElementById(section+'-titre').focus(); return; }
-  const editId = document.getElementById(section+'-edit-id').value;
-  const stars = +document.getElementById(section+'-stars').value||0;
-  let item = {id:editId||uid(), titre, stars, date:today()};
-  if(section==='livres')  { item.auteur=document.getElementById('livres-auteur').value.trim(); item.statut=document.getElementById('livres-statut').value; item.note=document.getElementById('livres-note').value.trim(); }
-  if(section==='musique') { item.artiste=document.getElementById('musique-artiste').value.trim(); item.genre=document.getElementById('musique-genre').value.trim(); item.note=document.getElementById('musique-note').value.trim(); }
-  if(section==='cinema')  { item.real=document.getElementById('cinema-real').value.trim(); item.type=document.getElementById('cinema-type').value; item.statut=document.getElementById('cinema-statut').value; item.note=document.getElementById('cinema-note').value.trim(); }
-  if(editId){ const i=DB[section].findIndex(x=>x.id==editId); if(i>-1) DB[section][i]=item; else DB[section].unshift(item); }
-  else DB[section].unshift(item);
-  save(section); renderMedia(section); goBack();
+function saveLivre(){
+  const titre=document.getElementById('livres-titre').value.trim();
+  if(!titre){document.getElementById('livres-titre').focus();return;}
+  const editId=document.getElementById('livres-edit-id').value;
+  const photos=[...photoBuffers['livres']];
+  const item={id:editId||uid(),titre,auteur:document.getElementById('livres-auteur').value.trim(),
+    statut:document.getElementById('livres-statut').value,note:document.getElementById('livres-note').value.trim(),
+    stars:+document.getElementById('livres-stars').value||0,photos,date:today()};
+  if(editId){const i=DB.livres.findIndex(x=>x.id==editId);if(i>-1)DB.livres[i]=item;}
+  else DB.livres.unshift(item);
+  save('livres');renderLivres();goBack();
 }
-
-function editMedia(section, id){
-  const item = DB[section].find(x=>x.id===id); if(!item) return;
-  document.getElementById(section+'-edit-id').value = id;
-  document.getElementById(section+'-titre').value = item.titre||'';
-  document.getElementById(section+'-stars').value = item.stars||0;
-  buildStars(section+'-stars-ui', section+'-stars', item.stars||0);
-  if(section==='livres')  { document.getElementById('livres-auteur').value=item.auteur||''; document.getElementById('livres-statut').value=item.statut||'a-faire'; document.getElementById('livres-note').value=item.note||''; }
-  if(section==='musique') { document.getElementById('musique-artiste').value=item.artiste||''; document.getElementById('musique-genre').value=item.genre||''; document.getElementById('musique-note').value=item.note||''; }
-  if(section==='cinema')  { document.getElementById('cinema-real').value=item.real||''; document.getElementById('cinema-type').value=item.type||'Film'; document.getElementById('cinema-statut').value=item.statut||'a-faire'; document.getElementById('cinema-note').value=item.note||''; }
-  const titles={livres:'Modifier le livre',musique:'Modifier l\'album',cinema:'Modifier le film'};
-  document.getElementById(section+'-form-title').textContent = titles[section];
-  navStack.push(current);
-  showScreen(section+'-form');
+function editLivre(id){
+  const item=DB.livres.find(x=>x.id===id);if(!item)return;
+  document.getElementById('livres-edit-id').value=id;
+  document.getElementById('livres-titre').value=item.titre||'';
+  document.getElementById('livres-auteur').value=item.auteur||'';
+  document.getElementById('livres-statut').value=item.statut||'a-faire';
+  document.getElementById('livres-note').value=item.note||'';
+  document.getElementById('livres-stars').value=item.stars||0;
+  buildStars('livres-stars-ui','livres-stars',item.stars||0);
+  document.getElementById('livres-form-title').textContent='Modifier le livre';
+  loadPhotosForEdit('livres',item.photos);
+  navStack.push(current);showScreen('livres-form');
 }
-
-function deleteMedia(section, id){
-  if(!confirm('Supprimer ?')) return;
-  DB[section] = DB[section].filter(x=>x.id!==id);
-  save(section); renderMedia(section);
+function deleteLivre(id){
+  if(!confirm('Supprimer ?'))return;
+  DB.livres=DB.livres.filter(x=>x.id!==id);save('livres');renderLivres();
 }
-
-function renderMedia(section, search=''){
-  const cfg = MEDIA[section];
-  const q = search.toLowerCase();
-  let v = DB[section].filter(x=>(x.titre||'').toLowerCase().includes(q)||((x.auteur||x.artiste||x.real)||'').toLowerCase().includes(q));
-  // filtre statut
-  const f = mediaFilters[section];
-  if(f && f!=='all') v = v.filter(x=>x.statut===f);
-  document.getElementById(section+'-count').textContent = v.length+' élément'+(v.length!==1?'s':'');
-  const list = document.getElementById(section+'-list');
-  if(!v.length){ list.innerHTML=`<div class="empty"><div class="e-icon">${cfg.icon}</div><p>Appui long sur <strong>${section.charAt(0).toUpperCase()+section.slice(1)}</strong><br>pour en ajouter un.</p></div>`; return; }
-  list.innerHTML = v.map(item=>{
-    const sub = item.auteur||item.artiste||item.real||'';
-    const statusHtml = item.statut&&cfg.statusLabels ? `<span class="badge badge-${cfg.badgeMap[item.statut]}">${cfg.statusLabels[item.statut]}</span>` : '';
-    const extraHtml  = item.genre?`<span class="tag">${esc(item.genre)}</span>`:item.type?`<span class="tag">${esc(item.type)}</span>`:'';
-    return `
+const livreStatutLbl={'a-faire':'À lire','en-cours':'En cours','lu':'Lu'};
+function renderLivres(search=''){
+  const q=search.toLowerCase();
+  let v=DB.livres.filter(x=>(x.titre||'').toLowerCase().includes(q)||(x.auteur||'').toLowerCase().includes(q));
+  if(livresFilter!=='all') v=v.filter(x=>x.statut===livresFilter);
+  document.getElementById('livres-count').textContent=v.length+' livre'+(v.length!==1?'s':'');
+  const list=document.getElementById('livres-list');
+  if(!v.length){list.innerHTML=`<div class="empty"><div class="e-icon">📚</div><p>Appui long sur <strong>Livres</strong><br>pour en ajouter un.</p></div>`;return;}
+  const cover=item=>item.photos&&item.photos.length?`<img src="${item.photos[0].data}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`:'📖';
+  list.innerHTML=v.map(item=>`
     <div class="card">
       <div class="media-row">
-        <div class="media-thumb ${cfg.round?'round':''}">${cfg.thumb}</div>
+        <div class="media-thumb">${cover(item)}</div>
         <div class="media-body">
           <div class="media-title">${esc(item.titre)}</div>
-          ${sub?`<div class="media-sub">${esc(sub)}</div>`:''}
-          <div class="meta">${statusHtml}${extraHtml}<span class="tag">${item.date}</span></div>
+          ${item.auteur?`<div class="media-sub">${esc(item.auteur)}</div>`:''}
+          <div class="meta"><span class="badge badge-${item.statut}">${livreStatutLbl[item.statut]||''}</span><span class="tag">${item.date}</span></div>
+          ${item.stars?`<div class="stars">${starsHtml(item.stars)}</div>`:''}
+          ${item.note?`<div class="media-note">${esc(item.note)}</div>`:''}
+        </div>
+      </div>
+      ${item.photos&&item.photos.length>1?photosHtml(item.photos.slice(1)):''}
+      <div class="card-actions">
+        <button class="btn btn-sm btn-edit" onclick="editLivre('${item.id}')">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteLivre('${item.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════
+//  MÉDIAS
+// ════════════════════════════════
+const MEDIA_ICONS={Musique:'🎵',Film:'🎬',Série:'📺',Documentaire:'🎥',Podcast:'🎙'};
+const STATUT_LBL={'a-faire':'À voir/écouter','en-cours':'En cours','vu':'Vu/écouté ✅'};
+let mediasFilter='all';
+
+function setMediasFilter(f,btn){
+  mediasFilter=f;
+  btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderMedias();
+}
+function updateMediaIcon(){}
+function saveMedia(){
+  const titre=document.getElementById('medias-titre').value.trim();
+  if(!titre){document.getElementById('medias-titre').focus();return;}
+  const editId=document.getElementById('medias-edit-id').value;
+  const item={id:editId||uid(),type:document.getElementById('medias-type').value,titre,
+    auteur:document.getElementById('medias-auteur').value.trim(),
+    statut:document.getElementById('medias-statut').value,
+    note:document.getElementById('medias-note').value.trim(),
+    stars:+document.getElementById('medias-stars').value||0,date:today()};
+  if(editId){const i=DB.medias.findIndex(x=>x.id==editId);if(i>-1)DB.medias[i]=item;}
+  else DB.medias.unshift(item);
+  save('medias');renderMedias();goBack();
+}
+function editMedia(id){
+  const item=DB.medias.find(x=>x.id===id);if(!item)return;
+  document.getElementById('medias-edit-id').value=id;
+  document.getElementById('medias-type').value=item.type||'Musique';
+  document.getElementById('medias-titre').value=item.titre||'';
+  document.getElementById('medias-auteur').value=item.auteur||'';
+  document.getElementById('medias-statut').value=item.statut||'a-faire';
+  document.getElementById('medias-note').value=item.note||'';
+  document.getElementById('medias-stars').value=item.stars||0;
+  buildStars('medias-stars-ui','medias-stars',item.stars||0);
+  document.getElementById('medias-form-title').textContent='Modifier';
+  navStack.push(current);showScreen('medias-form');
+}
+function deleteMedia(id){
+  if(!confirm('Supprimer ?'))return;
+  DB.medias=DB.medias.filter(x=>x.id!==id);save('medias');renderMedias();
+}
+function renderMedias(search=''){
+  const q=search.toLowerCase();
+  let v=DB.medias.filter(x=>(x.titre||'').toLowerCase().includes(q)||(x.auteur||'').toLowerCase().includes(q));
+  if(mediasFilter!=='all') v=v.filter(x=>x.type===mediasFilter);
+  document.getElementById('medias-count').textContent=v.length+' élément'+(v.length!==1?'s':'');
+  const list=document.getElementById('medias-list');
+  if(!v.length){list.innerHTML=`<div class="empty"><div class="e-icon">🎬</div><p>Appui long sur <strong>Médias</strong><br>pour en ajouter un.</p></div>`;return;}
+  list.innerHTML=v.map(item=>`
+    <div class="card">
+      <div class="media-row">
+        <div class="media-thumb" style="font-size:1.8rem;height:56px;width:56px;border-radius:50%">${MEDIA_ICONS[item.type]||'🎬'}</div>
+        <div class="media-body">
+          <div class="media-title">${esc(item.titre)}</div>
+          ${item.auteur?`<div class="media-sub">${esc(item.auteur)}</div>`:''}
+          <div class="meta"><span class="tag">${item.type}</span><span class="badge badge-${item.statut}">${STATUT_LBL[item.statut]||''}</span><span class="tag">${item.date}</span></div>
           ${item.stars?`<div class="stars">${starsHtml(item.stars)}</div>`:''}
           ${item.note?`<div class="media-note">${esc(item.note)}</div>`:''}
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn btn-sm btn-edit" onclick="editMedia('${section}','${item.id}')">✎ Modifier</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteMedia('${section}','${item.id}')">✕ Supprimer</button>
+        <button class="btn btn-sm btn-edit" onclick="editMedia('${item.id}')">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMedia('${item.id}')">✕</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 // ════════════════════════════════
-//  INIT STARS PICKERS
+//  DIVERS
 // ════════════════════════════════
-buildStars('livres-stars-ui',  'livres-stars',  0);
-buildStars('musique-stars-ui', 'musique-stars', 0);
-buildStars('cinema-stars-ui',  'cinema-stars',  0);
+const RUBRIQUE_ICONS=['📁','⭐','🏠','💼','🎯','🌍','💡','🏋️','🍽️','✈️','🎨','🐾','💰','📝','🔧'];
+
+function openNewRubriquePrompt(){
+  const name=prompt('Nom de la nouvelle rubrique :');
+  if(!name||!name.trim()) return;
+  const iconIdx=Math.floor(Math.random()*RUBRIQUE_ICONS.length);
+  const rub={id:uid(),name:name.trim(),icon:RUBRIQUE_ICONS[iconIdx],items:[]};
+  DB.divers.push(rub);
+  save('divers');renderDivers();
+}
+
+function deleteRubrique(id){
+  if(!confirm('Supprimer cette rubrique et tout son contenu ?'))return;
+  DB.divers=DB.divers.filter(r=>r.id!==id);save('divers');renderDivers();
+}
+
+function openRubrique(id){
+  currentRubrique=id;
+  const rub=DB.divers.find(r=>r.id===id);if(!rub)return;
+  document.getElementById('divers-rubrique-title').textContent=rub.icon+' '+rub.name;
+  document.getElementById('tb-icon').textContent=rub.icon;
+  document.getElementById('tb-title').innerHTML=esc(rub.name);
+  renderDiversItems(id);
+  showScreen('divers-rubrique');
+}
+
+function openDiversItemForm(){
+  document.getElementById('divers-item-edit-id').value='';
+  document.getElementById('divers-item-titre').value='';
+  document.getElementById('divers-item-desc').value='';
+  document.getElementById('divers-item-form-title').textContent='Nouvel élément';
+  clearPhotos('divers-item');
+  showScreen('divers-item-form');
+}
+
+function saveDiversItem(){
+  const titre=document.getElementById('divers-item-titre').value.trim();
+  if(!titre){document.getElementById('divers-item-titre').focus();return;}
+  const editId=document.getElementById('divers-item-edit-id').value;
+  const rub=DB.divers.find(r=>r.id===currentRubrique);if(!rub)return;
+  const photos=[...photoBuffers['divers-item']];
+  const item={id:editId||uid(),titre,desc:document.getElementById('divers-item-desc').value.trim(),photos,date:today()};
+  if(editId){const i=rub.items.findIndex(x=>x.id==editId);if(i>-1)rub.items[i]=item;}
+  else rub.items.unshift(item);
+  save('divers');renderDiversItems(currentRubrique);showScreen('divers-rubrique');
+}
+
+function editDiversItem(rubId,itemId){
+  const rub=DB.divers.find(r=>r.id===rubId);if(!rub)return;
+  const item=rub.items.find(x=>x.id===itemId);if(!item)return;
+  document.getElementById('divers-item-edit-id').value=itemId;
+  document.getElementById('divers-item-titre').value=item.titre||'';
+  document.getElementById('divers-item-desc').value=item.desc||'';
+  document.getElementById('divers-item-form-title').textContent='Modifier';
+  loadPhotosForEdit('divers-item',item.photos);
+  showScreen('divers-item-form');
+}
+
+function deleteDiversItem(rubId,itemId){
+  if(!confirm('Supprimer ?'))return;
+  const rub=DB.divers.find(r=>r.id===rubId);if(!rub)return;
+  rub.items=rub.items.filter(x=>x.id!==itemId);
+  save('divers');renderDiversItems(rubId);
+}
+
+function renderDivers(){
+  const list=document.getElementById('divers-rubriques');
+  document.getElementById('divers-count').textContent=DB.divers.length+' rubrique'+(DB.divers.length!==1?'s':'');
+  let html=`<div class="rubrique-list">`;
+  html+=DB.divers.map(r=>`
+    <div class="rubrique-card" onclick="openRubrique('${r.id}')">
+      <div class="rubrique-icon">${r.icon}</div>
+      <div class="rubrique-info">
+        <div class="rubrique-name">${esc(r.name)}</div>
+        <div class="rubrique-count">${r.items.length} élément${r.items.length!==1?'s':''}</div>
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteRubrique('${r.id}')">✕</button>
+    </div>`).join('');
+  html+=`<button class="add-rubrique-btn" onclick="openNewRubriquePrompt()">＋ Créer une rubrique</button>`;
+  html+=`</div>`;
+  list.innerHTML=html;
+}
+
+function renderDiversItems(rubId,search=''){
+  const rub=DB.divers.find(r=>r.id===rubId);
+  const list=document.getElementById('divers-items-list');
+  if(!rub){list.innerHTML='';return;}
+  const q=(search||'').toLowerCase();
+  const v=rub.items.filter(x=>(x.titre||'').toLowerCase().includes(q)||(x.desc||'').toLowerCase().includes(q));
+  document.getElementById('divers-rubrique-count').textContent=v.length+' élément'+(v.length!==1?'s':'');
+  if(!v.length){list.innerHTML=`<div class="empty"><div class="e-icon">${rub.icon}</div><p>Aucun élément.<br>Appuie sur <strong>+ Ajouter</strong> ci-dessous.</p></div>`;return;}
+  list.innerHTML=v.map(item=>`
+    <div class="card">
+      <div class="media-title" style="font-family:'Playfair Display',serif;font-size:1rem">${esc(item.titre)}</div>
+      ${item.desc?`<div class="entry-def" style="margin-top:5px">${esc(item.desc)}</div>`:''}
+      <div class="meta"><span class="tag">${item.date}</span></div>
+      ${photosHtml(item.photos)}
+      <div class="card-actions">
+        <button class="btn btn-sm btn-edit" onclick="editDiversItem('${rubId}','${item.id}')">✎ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDiversItem('${rubId}','${item.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
 
 // ════════════════════════════════
-//  INIT RENDER
+//  INIT
 // ════════════════════════════════
-// Exposer DB et renders pour le module Firebase
-window.DB            = DB;
-window.renderTodos     = renderTodos;
-window.renderCitations = renderCitations;
-window.renderMedia     = renderMedia;
+buildStars('livres-stars-ui','livres-stars',0);
+buildStars('medias-stars-ui','medias-stars',0);
 
-renderTodos();
-renderCitations();
-renderMedia('livres');
-renderMedia('musique');
-renderMedia('cinema');
+window.DB=DB;
+window.renderTodos=renderTodos;
+window.renderCitations=renderCitations;
+window.renderLivres=renderLivres;
+window.renderMedias=renderMedias;
+window.renderDivers=renderDivers;
+window.cloudSave=null;
+
+renderTodos();renderCitations();renderLivres();renderMedias();renderDivers();
 </script>
 </body>
 </html>
