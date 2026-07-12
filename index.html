@@ -15,8 +15,8 @@
 <script type="module">
 import { initializeApp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink,
-         signInWithEmailLink, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup,
+         signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -33,41 +33,20 @@ const firebaseConfig = {
   appId: "1:259860484440:web:5d5fc6aa51f4b27ae8552d"
 };
 
-const app  = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-let unsub  = null;
+const app      = initializeApp(firebaseConfig);
+const auth     = getAuth(app);
+const db       = getFirestore(app);
+const provider = new GoogleAuthProvider();
+let unsub      = null;
 
-const ACTION_URL = window.location.origin + window.location.pathname;
-
-// ── Magic Link : vérifie si on revient d'un lien ────
-if (isSignInWithEmailLink(auth, window.location.href)) {
-  let email = localStorage.getItem('emailForSignIn');
-  if (!email) email = window.prompt('Confirme ton adresse email :');
-  if (email) {
-    signInWithEmailLink(auth, email, window.location.href)
-      .then(() => {
-        localStorage.removeItem('emailForSignIn');
-        window.history.replaceState({}, document.title, ACTION_URL);
-      })
-      .catch(e => alert('Erreur : ' + e.message));
-  }
-}
-
-// ── Login : envoie le magic link ────────────────────
+// ── Login Google (popup) ────────────────────────────
 window.fbLogin = async () => {
   if (auth.currentUser) { window.fbLogout(); return; }
-  const email = prompt('Entre ton adresse email\npour te connecter sur tous tes appareils :');
-  if (!email) return;
   try {
-    await sendSignInLinkToEmail(auth, email, {
-      url: ACTION_URL,
-      handleCodeInApp: true,
-    });
-    localStorage.setItem('emailForSignIn', email);
-    alert('✉️ Lien envoyé à ' + email + '\n\nOuvre ce lien depuis cet appareil pour te connecter.');
+    await signInWithPopup(auth, provider);
   } catch(e) {
-    alert('Erreur : ' + e.message);
+    console.error('Login error:', e.message);
+    alert('Erreur de connexion : ' + e.message);
   }
 };
 
@@ -76,22 +55,25 @@ window.fbLogout = async () => {
   await signOut(auth);
 };
 
-// ── Écoute connexion ────────────────────────────────
+// ── Écoute état connexion ───────────────────────────
 onAuthStateChanged(auth, user => {
   const btn = document.getElementById('sync-btn');
   if (!btn) return;
   if (user) {
-    btn.innerHTML = '☁ ' + (user.email?.split('@')[0] || 'Connecté');
+    // Affiche photo + prénom
+    const photo = user.photoURL
+      ? `<img src="${user.photoURL}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:5px"/>`
+      : '☁ ';
+    btn.innerHTML = photo + (user.displayName?.split(' ')[0] || 'Connecté');
     btn.title = 'Connecté — cliquer pour se déconnecter';
     btn.style.borderColor = 'var(--success)';
     btn.style.color = 'var(--success)';
 
-    // Écoute temps réel Firestore
+    // Synchronisation temps réel Firestore
     if (unsub) unsub();
     unsub = onSnapshot(doc(db, 'carnets', user.uid), snap => {
       if (!snap.exists()) return;
       const d = snap.data();
-      // Ne remplace que si les données cloud sont plus récentes
       if (d.todos)     { window.DB.todos     = d.todos;     window.renderTodos(); }
       if (d.citations) { window.DB.citations = d.citations; window.renderCitations(); }
       if (d.livres)    { window.DB.livres    = d.livres;    window.renderLivres(); }
@@ -100,7 +82,7 @@ onAuthStateChanged(auth, user => {
     });
   } else {
     btn.innerHTML = '☁ Sync';
-    btn.title = 'Se connecter pour synchroniser sur tous les appareils';
+    btn.title = 'Se connecter avec Google pour synchroniser';
     btn.style.borderColor = '';
     btn.style.color = '';
   }
@@ -693,26 +675,82 @@ let DB = {
 let photoBuffers = { todos:[], livres:[], 'divers-item':[] };
 
 function save(key){
-  localStorage.setItem(key, JSON.stringify(DB[key]));
-  if(window.cloudSave) window.cloudSave({[key]: DB[key]});
+  // Sauvegarde locale avec gestion erreur quota
+  try {
+    localStorage.setItem(key, JSON.stringify(DB[key]));
+  } catch(e) {
+    if(e.name === 'QuotaExceededError'){
+      alert('⚠️ Stockage local plein. Supprime des photos ou des éléments pour libérer de la place.');
+    }
+    console.error('localStorage error:', e);
+    return;
+  }
+  // Sauvegarde cloud (sans les photos pour Firestore)
+  if(window.cloudSave){
+    // Copie sans photos pour éviter la limite Firestore 1MB
+    const dataWithoutPhotos = JSON.parse(JSON.stringify(DB[key])).map ? 
+      JSON.parse(JSON.stringify(DB[key])).map(item => {
+        const copy = {...item};
+        if(copy.photos) copy.photos = copy.photos.map(p=>({name:p.name, data:''})); // vide les data
+        if(copy.items)  copy.items  = copy.items.map(it=>{ const c={...it}; if(c.photos) c.photos=c.photos.map(p=>({name:p.name,data:''})); return c; });
+        return copy;
+      }) : DB[key];
+    window.cloudSave({[key]: dataWithoutPhotos});
+  }
+  // Feedback visuel
   const p = document.getElementById('save-pill');
   p.classList.add('show'); clearTimeout(p._t);
   p._t = setTimeout(()=>p.classList.remove('show'), 2000);
 }
 
 // ════════════════════════════════
-//  PHOTOS
+//  PHOTOS (avec compression)
 // ════════════════════════════════
-function handlePhotos(section, input){
-  const files = Array.from(input.files);
-  files.forEach(file => {
+
+// Compresse une image en JPEG ≤ 200KB via canvas
+function compressImage(file, maxKB=200){
+  return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = e => {
-      photoBuffers[section].push({ name: file.name, data: e.target.result });
-      renderPhotoPreview(section);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Redimensionne si trop grand
+        let w = img.width, h = img.height;
+        const MAX = 1200;
+        if(w > MAX || h > MAX){
+          if(w > h){ h = Math.round(h * MAX/w); w = MAX; }
+          else { w = Math.round(w * MAX/h); h = MAX; }
+        }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        // Ajuste la qualité jusqu'à ce que ça rentre
+        let quality = 0.8;
+        let data = canvas.toDataURL('image/jpeg', quality);
+        while(data.length > maxKB * 1024 * 1.37 && quality > 0.2){
+          quality -= 0.1;
+          data = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve({ name: file.name.replace(/\.[^.]+$/, '.jpg'), data });
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
+}
+
+async function handlePhotos(section, input){
+  const files = Array.from(input.files);
+  for(const file of files){
+    try {
+      const compressed = await compressImage(file);
+      photoBuffers[section].push(compressed);
+      renderPhotoPreview(section);
+    } catch(e) {
+      console.error('Photo error:', e);
+    }
+  }
   input.value = '';
 }
 
